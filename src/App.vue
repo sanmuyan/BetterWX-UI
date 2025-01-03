@@ -8,7 +8,7 @@
           <label for="on_label">请选择Weixin.dll文件</label>
         </FloatLabel>
         <Button label="选择" class="m-r" size="small" @click="select_file" />
-        <Button label="52pojie" size="small" @click="open_52" />
+        <Button label="52pojie" size="small" :badge="version" badgeSeverity="danger"  @click="open_52" />
       </div>
     </Fieldset>
 
@@ -41,6 +41,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useToast } from 'primevue/usetoast';
 import { message } from '@tauri-apps/plugin-dialog';
 import { exit } from '@tauri-apps/plugin-process';
+import { fetch } from '@tauri-apps/plugin-http';
+import { getVersion } from '@tauri-apps/api/app';
 
 const toast = useToast();
 const wx_loc = ref("")
@@ -48,9 +50,10 @@ const wx_ver = ref("")
 const wx_path = ref("")
 const loading = ref(false)
 const list = ref([]);
-const name = ref("")
+const version = ref("")
 
 onMounted(async () => {
+  check_update()
   //获取 lock.ini 文件夹路径
   let r = await check_admin()
   if (!r) {
@@ -184,7 +187,7 @@ async function add(arg) {
     show_contrast("添加失败,已经有太多了")
     return
   }
-  await do_command("wx_do_patch", { isUnlock: true, isRevoke: list.value[0].revoke, coexistNumber: num }, (r) => {
+  await do_command("wx_do_patch", { isUnlock: false, isRevoke: list.value[0].revoke, coexistNumber: num }, (r) => {
     if (!r.length) {
       show_contrast("好像失败了")
       return
@@ -259,6 +262,52 @@ async function do_command(command, arg, cb, show_loading, show_msg = false, msg 
 function show_contrast(detail, life = 1000) {
   toast.add({ severity: 'contrast', summary: '消息', detail: detail, life: detail, life });
 };
+
+/**
+ * 1.0.2检测更新
+ */
+async function check_update(){
+  try {
+    const app_version = await getVersion();
+    const new_version = await get_version();
+    if(new_version>app_version){
+      version.value = new_version
+    }
+  } catch (error) {
+    version.value= ""
+  }
+ 
+}
+
+function get_version() {
+    let base_urls = ["https://api.kkgithub.com/","https://api.github.com/"]
+    let url = "repos/afaa1991/BetterWx-UI"
+    let reqs = []
+    base_urls.forEach(item => {
+        reqs .push(http(item+url))
+    });
+    return new Promise((resolve, reject) => {
+        Promise.any(reqs).then((values) => {
+            resolve(values);
+        }).catch(error => {
+            reject(error)
+        });
+    })
+  
+}
+
+async function http(url) {
+    return new Promise(async (resolve, reject) => {
+        let resp =  fetch(url)
+        .then((response) => response.json())
+        .then((data) => {
+            resolve(data.default_branch)
+        })
+        .catch((error) => {
+            reject(error);
+        });
+    })
+}
 </script>
 
 <style>

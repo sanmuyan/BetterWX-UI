@@ -27,6 +27,7 @@ pub struct Patchs {
     pub coexist: Patch,
     pub autologin: Patch,
     pub exe: Patch,
+    pub lockini: Patch,
 }
 
 #[derive(Debug)]

@@ -1,6 +1,6 @@
 [package]
 name = "betterwx-ui"
-version = "1.0.1"
+version = "1.0.2"
 description = "a wx tool"
 authors = ["afaa1991"]
 edition = "2021"
@@ -28,3 +28,4 @@ serde_json = "1.0.133"
 tauri-plugin-dialog = "2"
 winapi = { version = "0.3", features = ["winnt", "processthreadsapi", "securitybaseapi", "handleapi", "errhandlingapi"] }
 tauri-plugin-process = "2"
+tauri-plugin-http = "2"

@@ -48,3 +48,6 @@ pub const AUTOLOGIN_PATTERN: &str = "686F73742D72656469726563742E786D6C";
 
 //Redirect Weixin.dll -> Weixin.dl1
 pub const EXE_PATTERN: &str = "570065006900780069006E002E0064006C006C";
+
+//1.0.2 Redirect lock.ini -> lock.in1
+pub const LOCKINI_PATTERN: &str = "6C 00 6F 00 63 00 6B 00 2E 00 69 00 6E 00 69";

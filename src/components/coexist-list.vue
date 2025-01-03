@@ -2,13 +2,13 @@
     <div class="flex row justify-between items-center">
         <div class="flex row justify-center">
             <b class="m-r">{{ isMain ? '主程序' : '共存-' + data.id }}</b>
-            <div class=" flex items-center gap m-x">
-                <label for="unlock">双开</label>
-                <ToggleSwitch inputId="unlock" v-model="unlock" @change="switch_change" :disabled="!isMain" />
-            </div>
             <div class="flex items-center gap  m-x">
                 <label for="revoke">撤回</label>
                 <ToggleSwitch inputId="revoke" v-model="revoke" @change="switch_change" />
+            </div>
+            <div v-if="isMain" class=" flex items-center gap m-x">
+                <label for="unlock">双开</label>
+                <ToggleSwitch inputId="unlock" v-model="unlock" @change="switch_change"  />
             </div>
         </div>
         <div class="flex items-center gap">

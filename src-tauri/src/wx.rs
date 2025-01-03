@@ -235,14 +235,18 @@ pub fn do_patch(
         let l = patch.len();
         autologin_patch.patch[l - 1] = num_u8;
         patched(&mut new_dll_data, &autologin_patch, true)?;
+
+        // 1.0.2 lock.ini
+        let mut lockini_patch = (&wx_info.patchs.lockini).clone();
+        let patch = &lockini_patch.patch;
+        let l = patch.len();
+        lockini_patch.patch[l - 1] = num_u8;
+        patched(&mut new_dll_data, &lockini_patch, true)?;
     }
 
+    //1.0.2 cancle force unlock
     //unlock_patch
-    patched(
-        &mut new_dll_data,
-        &wx_info.patchs.unlock,
-        is_unlock || is_force_unlock,
-    )?;
+    patched(&mut new_dll_data, &wx_info.patchs.unlock, is_unlock)?;
 
     //revoke_patch
     patched(&mut new_dll_data, &wx_info.patchs.revoke, is_revoke)?;
@@ -338,12 +342,15 @@ fn search_patchs(dll_data_hex: &str, exe_data_hex: &str) -> Result<Patchs, MyErr
     let unlock = search_patch("unlock", &dll_data_hex, UNLOCK_PATTERN, UNLOCK_REPLACE)?;
     let revoke = search_patch("revoke", &dll_data_hex, REVOKE_PATTERN, REVOKE_REPLACE)?;
     let exe = search_patch("exe", &exe_data_hex, EXE_PATTERN, EXE_PATTERN)?;
+    //1.0.2 lock.ini->lock.in{n}
+    let lockini = search_patch("lockini", &dll_data_hex, LOCKINI_PATTERN, LOCKINI_PATTERN)?;
     let patchs = Patchs {
         unlock,
         revoke,
         coexist,
         autologin,
         exe,
+        lockini,
     };
     Ok(patchs)
 }
