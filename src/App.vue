@@ -20,8 +20,7 @@
         </div>
       </template>
       <template v-for="(item, index) in list" :key="index">
-        <coexistList :isMain="item.id == -1" :data="item" :index="index" :num="item.id" :unlock="item.unlock"
-          :revoke="item.revoke" @switch_change="switch_change" @refresh="refresh" @loc="open_folder" @add="add"
+        <coexistList :isMain="item.id == -1" :data="item" :index="index" :num="item.id"  @switch_change="switch_change" @refresh="refresh" @loc="open_folder" @add="add"
           @del="del" @open_app="open_app" class="border-b p-y">
         </coexistList>
       </template>
@@ -62,10 +61,10 @@ onMounted(async () => {
     return
   }
   loading.value = true
-  show_contrast("正在初始化,请稍等", 1000)
+  show_contrast("正在初始化,请稍等")
   let temp = await invoke("wx_install_loc");
   if (!temp[0] || !temp[1]) {
-    show_contrast("获取安装目录失败，请手动选择Weixin.dll位置")
+    show_contrast("获取安装目录失败，请手动选择Weixin.dll位置",true)
     loading.value = false
     return
   }
@@ -82,6 +81,7 @@ onMounted(async () => {
  */
 async function wx_list_all(show_loading = false, show_msg = true) {
   await do_command("wx_list_all", {}, (r) => {
+    console.log(r);
     list.value = r
   }, show_loading, show_msg, "获取共存文件列表ok")
 }
@@ -131,7 +131,7 @@ function wx_path_input(e) {
 async function deal_wx_path(file, show_toast) {
   if (!file) return
   if (!file.endsWith("Weixin.dll")) {
-    if (show_toast) show_contrast("错误的路径，请选择Weixin.dll文件")
+    if (show_toast) show_contrast("错误的路径，请选择Weixin.dll文件",true)
     return
   }
   let paths = file.split("\\")
@@ -157,9 +157,9 @@ async function switch_change(arg) {
   let back = JSON.parse(JSON.stringify(item))
   item.unlock = arg.unlock
   item.revoke = arg.revoke
-  let r = await do_command("wx_do_patch", { isUnlock: arg.unlock, isRevoke: arg.revoke, coexistNumber: item.id }, (r) => {
+  let r = await do_command("wx_do_patch",  {patchInfo:{ unlock: arg.unlock, revoke: arg.revoke, number: item.id }}, (r) => {
     if (!r.length) {
-      show_contrast("好像失败了")
+      show_contrast("好像失败了",true)
       return
     }
     list.value[arg.index] = r[0]
@@ -184,12 +184,12 @@ async function add(arg) {
     if (ids.includes(i)) { continue } else { num = i; break }
   }
   if (num == 10) {
-    show_contrast("添加失败,已经有太多了")
+    show_contrast("添加失败,已经有太多了",true)
     return
   }
-  await do_command("wx_do_patch", { isUnlock: false, isRevoke: list.value[0].revoke, coexistNumber: num }, (r) => {
+  await do_command("wx_do_patch", {patchInfo:{ unlock: false, revoke: list.value[0].revoke, number: num }}, (r) => {
     if (!r.length) {
-      show_contrast("好像失败了")
+      show_contrast("好像失败了",true)
       return
     }
     list.value.push(r[0])
@@ -249,7 +249,7 @@ async function do_command(command, arg, cb, show_loading, show_msg = false, msg 
     }
     return r
   } catch (error) {
-    show_contrast(error)
+    show_contrast(error,true)
     return false
   } finally {
     if (show_loading) loading.value = false
@@ -259,8 +259,10 @@ async function do_command(command, arg, cb, show_loading, show_msg = false, msg 
 /**
  * toast
  */
-function show_contrast(detail, life = 1000) {
-  toast.add({ severity: 'contrast', summary: '消息', detail: detail, life: detail, life });
+function show_contrast(detail,error=false,life) {
+  let severity = error? "error" : "contrast"
+  life = life?life:error?5000:2000
+  toast.add({ severity, summary: '消息', detail: detail, life: detail, life });
 };
 
 /**

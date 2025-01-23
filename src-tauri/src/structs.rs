@@ -1,33 +1,28 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug)]
+use crate::error::MyError;
+
+use super::config::{UNLOCK, REVOKE, CONFIG, HOST, DLLNAME, LOCKINI};
+
+#[derive(Debug,Serialize,Deserialize,Clone)]
 pub struct Patch {
     pub name: String,
     pub loc: Vec<(usize, usize)>,
     pub original: Vec<u8>,
     pub patch: Vec<u8>,
+    pub replace_num_loc: usize,
+    pub config_item: ConfigItem,
 }
 
-impl Clone for Patch {
-    fn clone(&self) -> Self {
-        Self {
-            name: self.name.clone(),
-            loc: self.loc.clone(),
-            original: self.original.clone(),
-            patch: self.patch.clone(),
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct Patchs {
-    pub unlock: Patch,
-    pub revoke: Patch,
-    pub coexist: Patch,
-    pub autologin: Patch,
-    pub exe: Patch,
-    pub lockini: Patch,
+    pub unlock: Option<Patch>,
+    pub revoke: Option<Patch>,
+    pub config: Option<Patch>,
+    pub host: Option<Patch>,
+    pub dllname: Option<Patch>,
+    pub lockini: Option<Patch>,
 }
 
 #[derive(Debug)]
@@ -52,12 +47,83 @@ pub struct WxInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatchStatus {
+    pub name: String,
+    pub support: bool,
+    pub status: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoexistFileInfo {
     pub id: i32,
     pub dll_name: String,
     pub dll_file: PathBuf,
     pub exe_name: String,
     pub exe_file: PathBuf,
-    pub unlock: bool,
-    pub revoke: bool,
+    pub patch_status: Vec<PatchStatus>,
 }
+
+//配置类型
+pub type ConfigType = (&'static str, &'static str, &'static str, &'static str,bool,bool,bool);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct  ConfigItem{
+    pub version: String,
+    pub which: String,
+    pub pattern: String,
+    pub replace: String,
+    pub is_force_patch:bool,
+    pub is_replace_num:bool,
+    pub is_search:bool,
+}
+
+impl ConfigItem {
+    pub fn new(version: &str,  config: &[ConfigType]) -> Result<Self,MyError> {
+        for item in config {
+            if version >= item.0 {
+                let r = Self {
+                    version:item.0.to_string(), 
+                    which:item.1.to_string(), 
+                    pattern: item.2.to_string(), 
+                    replace: item.3.to_string(),
+                    is_force_patch:item.4,
+                    is_replace_num:item.5,
+                    is_search:item.6,
+                 };
+                return Ok(r);
+            }
+        }
+        Err(MyError::UnSpuuortVersion)
+    }
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatchConfig {
+    pub unlock: ConfigItem,
+    pub revoke: ConfigItem,
+    pub config: ConfigItem,
+    pub host: ConfigItem,
+    pub dllname: ConfigItem,
+    pub lockini: ConfigItem,
+}
+
+impl PatchConfig {
+    pub fn new(version: &str) ->  Result<Self,MyError>  {
+        let unlock = ConfigItem::new(version, &UNLOCK)?;
+        let revoke = ConfigItem::new(version,  &REVOKE)?;
+        let config =ConfigItem::new(version,  &CONFIG)?;
+        let host =ConfigItem::new(version,  &HOST)?;
+        let dllname =ConfigItem::new(version,  &DLLNAME)?;
+        let lockini =ConfigItem::new(version,  &LOCKINI)?;
+        Ok(Self {
+            unlock,
+            revoke,
+            config,
+            host,
+            dllname,
+            lockini,
+        })
+    }
+}
+

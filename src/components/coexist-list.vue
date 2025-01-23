@@ -2,20 +2,20 @@
     <div class="flex row justify-between items-center">
         <div class="flex row justify-center">
             <b class="m-r">{{ isMain ? '主程序' : '共存-' + data.id }}</b>
-            <div class="flex items-center gap  m-x">
+            <div v-if="!revoke_unsupport" class="flex items-center gap  m-x">
                 <label for="revoke">撤回</label>
-                <ToggleSwitch inputId="revoke" v-model="revoke" @change="switch_change" />
+                <ToggleSwitch inputId="revoke" v-model="revoke" @change="switch_change" :disables="revoke_unsupport"/>
             </div>
-            <div v-if="isMain" class=" flex items-center gap m-x">
+            <div v-if="isMain && !unlock_unsupport" class=" flex items-center gap m-x">
                 <label for="unlock">双开</label>
-                <ToggleSwitch inputId="unlock" v-model="unlock" @change="switch_change"  />
+                <ToggleSwitch inputId="unlock" v-model="unlock" @change="switch_change"  :disables="unlock_unsupport"/>
             </div>
         </div>
         <div class="flex items-center gap">
             <Button v-if="isMain" label="刷新" @click="refresh" size="small" />
             <Button v-if="isMain" label="位置" @click="loc" size="small" />
             <Button label="打开" @click="open_app" size="small" />
-            <Button v-if="isMain" label="共存" @click="add" size="small" />
+            <Button v-if="isMain && !unlock_unsupport" label="共存" @click="add" size="small" />
             <Button v-if="!isMain" label="删除" @click="del" size="small" severity="danger" />
         </div>
     </div>
@@ -23,6 +23,7 @@
 
 <script setup>
 import { ref, watchEffect, defineEmits } from 'vue'
+
 const props = defineProps({
     isMain: { type: Boolean, default: false },
     data: { type: Object, default: {} },
@@ -31,10 +32,22 @@ const props = defineProps({
 
 const unlock = ref(false)
 const revoke = ref(false)
+const unlock_unsupport  = ref(false)
+const revoke_unsupport  = ref(false)
 
 watchEffect(() => {
-    unlock.value = props.data.unlock
-    revoke.value = props.data.revoke
+    let patch_status = props.data.patch_status
+    console.log("patch_status",patch_status);
+    patch_status.forEach(item => {
+        if(item.name == "unlock"){
+            unlock.value = item.status
+            unlock_unsupport.value = item.unsupport
+        }
+        if(item.name == "revoke"){
+            revoke.value = item.status
+            revoke_unsupport.value = item.unsupport
+        }
+    });
 })
 
 const emit = defineEmits(["switch_change", "open_app", "add", "loc", "del", "refresh"])

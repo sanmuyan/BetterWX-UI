@@ -5,9 +5,11 @@ mod structs;
 mod win;
 mod wx;
 use error::MyError;
+use serde_json::Value;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 use structs::*;
+
 #[tauri::command(async)]
 fn wx_install_loc() -> (String, String) {
     wx::install_loc()
@@ -48,12 +50,8 @@ fn wx_open_folder(file: &str) -> Result<(), MyError> {
 }
 
 #[tauri::command(async)]
-fn wx_do_patch(
-    is_unlock: bool,
-    is_revoke: bool,
-    coexist_number: i32,
-) -> Result<Vec<CoexistFileInfo>, MyError> {
-    wx::do_patch(is_unlock, is_revoke, coexist_number)
+fn wx_do_patch(patch_info:Value) -> Result<Vec<CoexistFileInfo>, MyError> {
+   wx::do_patch(patch_info)
 }
 
 #[tauri::command(async)]

@@ -24,24 +24,24 @@ UI工具开源地址 [https://github.com/afaa1991/BetterWx-UI](https://github.co
 
 3.防撤回无提示。
 
-&emsp;【所有 revokemsg 消息变为未知消息，不响应撤回操作】
+  【所有 revokemsg 消息变为未知消息，不响应撤回操作】
 
 
 4.多开。
 
-&emsp;【移除 lock.ini 锁文件检测】
+  【移除 lock.ini 锁文件检测】
 
 
 5.共存版制作器。
 
-&emsp;【生成一个 Weixinζ.exe 和 Weixin.dlζ，其设置数据保存在 global_confζg、自动登录端口数据保存在 host-redirect.xmζ】
+  【生成一个 Weixinζ.exe 和 Weixin.dlζ，其设置数据保存在 global_confζg、自动登录端口数据保存在 host-redirect.xmζ】
 
 
 6.不是共存启动器，不是共存启动器，不是共存启动器。
 
-&emsp;不要当启动器用，当然你要这么用也没问题。
+  不要当启动器用，当然你要这么用也没问题。
 
-&emsp;更好的方式是分别为目录下的 Weixinζ.exe 创建快捷方式使用。
+  更好的方式是分别为目录下的 Weixinζ.exe 创建快捷方式使用。
 
 
 
@@ -49,40 +49,40 @@ UI工具开源地址 [https://github.com/afaa1991/BetterWx-UI](https://github.co
 
 1.找不到weixin.dll。
 
-&emsp;请确认是4.0+的版本，不支持3.9。
+  请确认是4.0+的版本，不支持3.9。
 
-&emsp; WeiXin.dll 在4.0的安装目录对应的版号文件夹里面。
+   WeiXin.dll 在4.0的安装目录对应的版号文件夹里面。
 
-&emsp;通过官方安装的微信一般能自动获取路径。
+  通过官方安装的微信一般能自动获取路径。
 
 
 2.微信 3.9.x 能用吗？
 
-&emsp;猜你想找 huiyadanli/RevokeMsgPatcher。
+  猜你想找 huiyadanli/RevokeMsgPatcher。
 
 
 3.共存、多开、防撤回这几个特性我可以挑选几个 or 全都要吗？
 
-&emsp;除了多开是作为共存的前置条件，别的可以自己选。
+  除了多开是作为共存的前置条件，别的可以自己选。
 
 
 4.企业微信能用吗？
 
-&emsp;不支持。
+  不支持。
 
 
 5.win7，win8 能用吗
 
-&emsp;不能。    
+  不能。    
 
-&emsp;基于tauti制作，只支持win10和win11 带 webview2 的系统。
+  基于tauti制作，只支持win10和win11 带 webview2 的系统。
 
-&emsp;win7,win8不支持，解决 webview2 运行时也能用。
+  win7,win8不支持，解决 webview2 运行时也能用。
 
 
 5.防撤回有没有提示。
 
-&emsp;没有，我也不会，等大佬们解决。
+  没有，我也不会，等大佬们解决。
 
 
 6.怎么批量启动多个账号。
@@ -92,26 +92,31 @@ start "" "D:\AppData\Tencent\Weixin\Weixin.exe"
 timeout /t 1 /nobreak >nul
 start "" "D:\AppData\Tencent\Weixin\Weixin1.exe"
 ```
-&emsp;修改“D:\AppData\Tencent\Weixin” 为你的微信安装目录。
+  修改“D:\AppData\Tencent\Weixin” 为你的微信安装目录。
 
-&emsp;Weixin1.exe 共存的exe文件名。需要启动哪个，添加哪个。
+  Weixin1.exe 共存的exe文件名。需要启动哪个，添加哪个。
 
-&emsp;以上内容保存到 bat 文件，运行。
+  以上内容保存到 bat 文件，运行。
 
 
 
 ## 更新说明
 
+### 1.1.0
+
+  支持4.0.2
+
 ### 1.0.2
 
-&emsp;修改共存锁定文件为lock.inζ,
+  修改共存锁定文件为lock.inζ,
 
-&emsp;共存独立锁定,不再需要双开了。 
+  共存独立锁定,不再需要双开了。 
 
 ### 1.0.1
 
-&emsp;默认 管理员模式启动。 
+  默认 管理员模式启动。 
 
 
-## 下载地址 1.0.2
-&emsp;[https://wwtt.lanzn.com/iQytD2jsvxla](https://wwtt.lanzn.com/iQytD2jsvxla)
+## 下载地址 1.1.0
+  [https://wwtt.lanzn.com/b0pmceqej 密码:4mb8](https://wwtt.lanzn.com/b0pmceqej)
+  

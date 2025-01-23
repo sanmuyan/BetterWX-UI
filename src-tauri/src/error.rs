@@ -11,6 +11,10 @@ pub enum MyError {
     SerdeJsonError(#[from] serde_json::Error),
     #[error("补丁数据无效")]
     FixPatchDataError,
+    #[error("特征码错误")]
+    PatternError,
+    #[error("不支持的版本")]
+    UnSpuuortVersion,
     #[error("读取文件失败")]
     ReadFileError,
     #[error("微信地址错误")]

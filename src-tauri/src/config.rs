@@ -1,3 +1,5 @@
+use super::structs::ConfigType;
+
 pub const WX_DLL_NAME: &str = "Weixin.dll";
 pub const WX_EXE_NAME: &str = "Weixin.exe";
 pub const NEW_WX_EXE_NAME: &str = "Weixin#.exe";
@@ -5,49 +7,106 @@ pub const NEW_WX_DLL_NAME: &str = "Weixin.dl#";
 pub const WX_DLL_BAK_NAME: &str = "Weixin.dll.bak";
 pub const WX_EXE_BAK_NAME: &str = "Weixin.exe.bak";
 
-pub const UNLOCK_PATTERN: &str = "
-        C7 44 24 ?? FF FF FF FF
-        31 F6
-        45 31 C0
-        41 B9 FF FF FF FF
-        FF 15 ?? ?? ?? ??
-        85 C0
-        75 0F";
-pub const UNLOCK_REPLACE: &str = "...EB 0F";
+//ConfigType
+//0 版本
+//1 dll or exe
+//2 原始字节码
+//3 替换字节码
+//4 共存时是否必须
+//5 共存替换
+//6 是否搜索状态
 
-pub const REVOKE_PATTERN: &str = "
-75 21 
-48 B8 72 65 76 6F 6B 65 6D 73
-48 89 05 ?? ?? ?? ??
-66 C7 05 ?? ?? ?? ?? 67 00
-C6 05 ?? ?? ?? ?? 01
-48 8D 3D
-";
+pub const UNLOCK:[ConfigType; 2] =[
+    (
+        "4.0.2",
+        "dll",
+        "554157415641545657534881ECD0010000488DAC248000000048C78548010000FEFFFFFF48C7451800000000B960000000",
+        "C3...",
+        true,
+        false,
+        true
+    ),
+    (
+        "4.0.0",
+        "dll",
+        "C74424??FFFFFFFF31F64531C041B9FFFFFFFFFF15????????85C0750F",
+        "...EB0F",
+        false,
+        false,
+        true
+        )
+];
 
-pub const REVOKE_REPLACE: &str = "
-EB 21
-...
-";
-
-pub const COEXIST_CONFIG_PATTERN: &str = "
-48 B8 67 6C 6F 62 61 6C 5F 63
-48 89 05 ?? ?? ?? ??
-C7 05 ?? ?? ?? ?? 6F 6E 66 69
-66 C7 05 ?? ?? ?? ?? 67 00
-";
+pub const REVOKE: [ConfigType; 2] = [
+    (
+        "4.0.2",
+        "dll",
+        "488D8DB0000000B201E8????????488D8DD0030000E8????????84C0746E",
+        "...9090",
+        false,
+        false,
+        true,
+    ),
+    (
+        "4.0.0",
+        "dll",
+        "752148B87265766F6B656D73488905????????66C705????????6700C605????????01488D3D",
+        "EB21...",
+        false,
+        false,
+        true,
+    ),
+];
 
 //打补丁时候 需要修改FF 为 num_u8
-pub const COEXIST_CONFIG_REPLACE: &str = "
-...
-C7 05 ?? ?? ?? ?? 6F 6E 66 FF
-66 C7 05 ?? ?? ?? ?? 67 00
-";
+pub const CONFIG: [ConfigType; 1] = [(
+    "4.0.0",
+    "dll",
+    "48B8676C6F62616C5F63488905????????C705????????6F6E666966C705????????6700",
+    "...C705????????6F6E66##66C705????????6700",
+    true,
+    true,
+    true,
+)];
 
 // Redirect host-redirect.xml -> host-redirect.xm1
-pub const AUTOLOGIN_PATTERN: &str = "686F73742D72656469726563742E786D6C";
+//打补丁时候 最后一位 修改为 num_u8
 
-//Redirect Weixin.dll -> Weixin.dl1
-pub const EXE_PATTERN: &str = "570065006900780069006E002E0064006C006C";
+pub const HOST: [ConfigType; 1] = [(
+    "4.0.0",
+    "dll",
+    "686F73742D72656469726563742E786D6C",
+    "...##",
+    true,
+    true,
+    true,
+)];
 
 //1.0.2 Redirect lock.ini -> lock.in1
-pub const LOCKINI_PATTERN: &str = "6C 00 6F 00 63 00 6B 00 2E 00 69 00 6E 00 69";
+//打补丁时候 最后一位 修改为 num_u8
+//1.0.3 4.0.2版本不需要了
+pub const LOCKINI: [ConfigType; 2] = [
+    ("4.0.2", "dll", "", "", false, false, true),
+    (
+        "4.0.0",
+        "dll",
+        "6C006F0063006B002E0069006E0069",
+        "...##",
+        true,
+        true,
+        true,
+    ),
+];
+
+//Redirect Weixin.dll -> Weixin.dl1
+//打补丁时候 最后一位 修改为 num_u8
+pub const DLLNAME: [ConfigType; 1] = [(
+    "4.0.0",
+    "exe",
+    "570065006900780069006E002E0064006C006C",
+    "...##",
+    true,
+    true,
+    true,
+)];
+

@@ -1,18 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "betterwx-ui",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "identifier": "com.betterwx-ui.app",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:51420",
+    "devUrl": "http://localhost:23323",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "betterwx-ui 1.0.2",
+        "title": "betterwx-ui 1.1.0",
         "width": 800,
         "minWidth": 800,
         "height": 400,

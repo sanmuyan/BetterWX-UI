@@ -3,7 +3,6 @@ use crate::error::MyError;
 use crate::structs::*;
 use faster_hex::{hex_decode, hex_string};
 use regex::Regex;
-use serde_json::{Map, Value};
 use std::borrow::Cow;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -105,40 +104,33 @@ pub fn list_by_name(
  */
 pub fn read_file_status(files: &mut Vec<CoexistFileInfo>) -> Result<(), MyError> {
     let wx_info = WXINFO.get().ok_or(MyError::NeedInitFirst)?;
+    let patchs = &wx_info.patchs;
     for item in files {
         let dll_data: Vec<u8> = fs::read(&item.dll_file).map_err(|_| MyError::ReadFileError)?;
-        let exe_data: Vec<u8> = fs::read(&item.exe_file).map_err(|_| MyError::ReadFileError)?;
-        let patchs = &wx_info.patchs;
-        //遍历parchs
-        let patchs_value = serde_json::to_value(patchs)?;
-        if let Value::Object(map) = patchs_value {
-            for (key, value) in map {
-                let patch_option: Option<Patch> = serde_json::from_value(value)?;
-                let mut status = false;
-                let support = !patch_option.is_none();
-                if let Some(patch) = &patch_option {
-                    //判断是否搜索
-                    if patch.config_item.is_search  {
-                        let data = if  patch.config_item.which == "dll"{
-                            &dll_data
-                        }else{
-                            &exe_data
-                        };
-                        let x = patch.loc[0];
-                        status = if &data[x.0..x.1] == patch.original {
-                            false
-                        } else {
-                            true
-                        }
-                    }
-                    item.patch_status.push(PatchStatus {
-                        name: key,
-                        support,
-                        status,
-                    });
-                }
+        item.unlock = if &patchs.unlock.is_none() == &true {
+            item.unlock_unsupport = true;
+            false
+        } else {
+            let unlock = patchs.unlock.clone().unwrap();
+            let x = unlock.loc[0];
+            if &dll_data[x.0..x.1] == unlock.original {
+                false
+            } else {
+                true
             }
-        }
+        };
+        item.revoke = if patchs.revoke.is_none() {
+            item.revoke_unsupport = true;
+            false
+        } else {
+            let revoke = patchs.revoke.clone().unwrap();
+            let x = revoke.loc[0];
+            if &dll_data[x.0..x.1] == revoke.original {
+                false
+            } else {
+                true
+            }
+        };
     }
     Ok(())
 }
@@ -184,7 +176,10 @@ fn walk_files(
                         exe_file: exe_file.clone(),
                         dll_name: dll_name.clone(),
                         dll_file: dll_file.clone(),
-                        patch_status: Vec::new(),
+                        revoke: false,
+                        revoke_unsupport: false,
+                        unlock_unsupport: false,
+                        unlock: false,
                     };
                     lists.push(f);
                 }
@@ -202,56 +197,110 @@ fn walk_files(
 /**
  * 修补保存文件
  */
-pub fn do_patch(patch_info: Value) -> Result<Vec<CoexistFileInfo>, MyError> {
+pub fn do_patch(
+    is_unlock: bool,
+    is_revoke: bool,
+    coexist_number: i32,
+) -> Result<Vec<CoexistFileInfo>, MyError> {
+    println!("do_patch {} {} {}", is_unlock, is_revoke, coexist_number);
     let wx_info = WXINFO.get().ok_or(MyError::NeedInitFirst)?;
+    let mut new_dll_data = (&wx_info.wx_data.dll_data).clone();
+    println!("new_dll_data  {}", new_dll_data.len());
     let dll_loc = &wx_info.wx_path.dll_loc;
     let exe_loc = &wx_info.wx_path.exe_loc;
-    let coexist_number = get_i64_from_value(&patch_info, "number");
     let is_coexist = coexist_number <= 9 && coexist_number >= 0;
-    let new_exe_name = get_new_exe_name(coexist_number);
-    let new_dll_name = get_dll_exe_name(coexist_number);
-    //遍历parchs
-    let patchs = &wx_info.patchs;
-    let patchs_value = serde_json::to_value(patchs)?;
-    //通过遍历patch_config 转 patch
-    //拷贝一份 exe 文件 用于修改
-    let mut new_exe_data = (&wx_info.wx_data.exe_data).clone();
-    //拷贝一份 dll 文件 用于修改
-    let mut new_dll_data = (&wx_info.wx_data.dll_data).clone();
-    if let Value::Object(map) = patchs_value {
-        //定义共存序号
+    let new_exe_name = if is_coexist {
+        &fix_corexist_file_name(NEW_WX_EXE_NAME, coexist_number)
+    } else {
+        WX_EXE_NAME
+    };
+    println!("new_exe_name len {}", new_exe_name);
+    let new_dll_name = if is_coexist {
+        &fix_corexist_file_name(NEW_WX_DLL_NAME, coexist_number)
+    } else {
+        WX_DLL_NAME
+    };
+    println!("new_dll_name len {}", new_dll_name);
+    //coexist_patch
+
+    if is_coexist {
         let num_u8 = format!("{:X}", coexist_number).as_bytes()[0];
-        //遍历 patchs
-        for (_key, value) in map {
-            let patch_option: Option<Patch> = serde_json::from_value(value)?;
-            if let Some(patch) = &patch_option {
-                //拷贝一份数据
-                let mut patch = patch.clone();
-                //从传参中取出是否patch
-                let mut is_patched = get_bool_from_value(&patch_info, patch.name.as_str());
-                //如果是共存，判断是否需要强制修改,是否需要替换FF
-                if is_coexist {
-                    is_patched = patch.config_item.is_force_patch | is_patched;
-                    //替换FF为 u8 number
-                    if patch.config_item.is_replace_num && patch.replace_num_loc != 0 {
-                        patch.patch[patch.replace_num_loc] = num_u8;
-                    }
-                }
-                //判断在哪个文件数据上 执行修改
-                if patch.config_item.which == "exe" {
-                    patched(&mut new_exe_data, &patch, is_patched)?;
-                } else {
-                    patched(&mut new_dll_data, &patch, is_patched)?;
+        //patch exe
+        let mut new_exe_data = (&wx_info.wx_data.exe_data).clone();
+        //修改 Weixin.exe 的 Weixin.dll 为 Weixin.dl{n}
+        if let Some(_) = &wx_info.patchs.dllname {
+            let mut exe_patch = wx_info.patchs.dllname.clone().unwrap();
+            let patch = &exe_patch.patch;
+            let l = patch.len();
+            exe_patch.patch[l - 1] = num_u8;
+            patched(&mut new_exe_data, &exe_patch, true)?;
+            println!("patched dllname  {}", true);
+        }
+
+        // 修改 dll 的 config 为conf{n}g  COEXIST_CONFIG_PATTERN 为 69 COEXIST_CONFIG_REPLACE 为 FF
+        // 把FF 修改为 num_u8
+        if let Some(_) = &wx_info.patchs.config {
+            let mut config_patch = (&wx_info.patchs.config).clone().unwrap();
+            for (i, x) in config_patch.patch.iter_mut().enumerate() {
+                if x == &(255 as u8) && config_patch.original[i] == 105 {
+                    *x = num_u8;
                 }
             }
+            patched(&mut new_dll_data, &config_patch, true)?;
+            println!("patched config_patch {}", true);
+        }
+        //host patch 和自动登入相关
+        if let Some(_) = &wx_info.patchs.host {
+            let mut host_patch = (&wx_info.patchs.host).clone().unwrap();
+            let patch = &host_patch.patch;
+            let l = patch.len();
+            host_patch.patch[l - 1] = num_u8;
+            patched(&mut new_dll_data, &host_patch, true)?;
+            println!("patched host {}", true);
+        }
+
+        // 1.0.2 lock.ini
+        //host patch 和自动登入相关
+        if let Some(_) = &wx_info.patchs.lockini {
+            let mut lockini_patch = (&wx_info.patchs.lockini).clone().unwrap();
+            let patch = &lockini_patch.patch;
+            let l = patch.len();
+            lockini_patch.patch[l - 1] = num_u8;
+            patched(&mut new_dll_data, &lockini_patch, true)?;
+            println!("patched host {}", true);
         }
     }
+    if let Some(unlock) = &wx_info.patchs.unlock {
+        patched(
+            &mut new_dll_data,
+            unlock,
+            (unlock.is_force_unlock && is_coexist) | is_unlock,
+        )?;
+        println!(
+            "patched unlock {}",
+            (unlock.is_force_unlock && is_coexist) | is_unlock
+        );
+    }
+
+    //revoke_patch
+    if let Some(revoke) = &wx_info.patchs.revoke {
+        patched(
+            &mut new_dll_data,
+            revoke,
+            (revoke.is_force_unlock && is_coexist) | is_revoke,
+        )?;
+        println!(
+            "patched revoke {}",
+            (revoke.is_force_unlock && is_coexist) | is_revoke
+        );
+    }
+
     //save
     // 保存 Weixin.exe 为 Weixin{n}.exe
     fs::write(exe_loc.join(&new_exe_name), &new_exe_data).map_err(|_| MyError::SaveFileError)?;
     let new_dll_file = &dll_loc.join(&new_dll_name);
     fs::write(&new_dll_file, &new_dll_data).map_err(|_| MyError::SaveFileError)?;
-    list_by_name(&new_exe_name, &new_dll_name)
+    list_by_name(new_exe_name, new_dll_name)
 }
 
 /**
@@ -323,19 +372,38 @@ fn load_file(wx_path: &WxPath) -> Result<(WxData, String, String), MyError> {
  * 搜索 所有 patch 位置
  */
 fn search_patchs(dll_data_hex: &str, exe_data_hex: &str, version: &str) -> Result<Patchs, MyError> {
-    let patch_config = PatchConfig::new(version)?;
-    let patch_config_value = serde_json::to_value(patch_config)?;
-    let mut json_obj = Map::new();
-    //通过遍历patch_config 转 patch
-    if let Value::Object(map) = patch_config_value {
-        for (key, value) in map {
-            let config_item = serde_json::from_value(value)?;
-            let p = search_patch(&key, &dll_data_hex, &exe_data_hex, &config_item)?;
-            let p = serde_json::to_value(p)?;
-            json_obj.insert(key, p);
-        }
-    }
-    let patchs = serde_json::from_value(Value::Object(json_obj))?;
+    let patch_config = PatchConfig::new(version);
+    let unlock = search_patch("unlock", &dll_data_hex, &exe_data_hex, &patch_config.unlock)?;
+    println!("unlock   {:?}", unlock);
+    let revoke = search_patch("revoke", &dll_data_hex, &exe_data_hex, &patch_config.revoke)?;
+    println!("revoke   {:?}", revoke);
+    let config = search_patch("config", &dll_data_hex, &exe_data_hex, &patch_config.config)?;
+    println!("config   {:?}", config);
+    let host = search_patch("host", &dll_data_hex, &exe_data_hex, &patch_config.host)?;
+    println!("host   {:?}", host);
+    let lockini = search_patch(
+        "lockini",
+        &dll_data_hex,
+        &exe_data_hex,
+        &patch_config.lockini,
+    )?;
+    println!("lockini   {:?}", lockini);
+    let dllname = search_patch(
+        "dllname",
+        &dll_data_hex,
+        &exe_data_hex,
+        &patch_config.dllname,
+    )?;
+    println!("dllname   {:?}", dllname);
+    let patchs = Patchs {
+        unlock,
+        revoke,
+        config,
+        host,
+        dllname,
+        lockini,
+    };
+
     Ok(patchs)
 }
 
@@ -348,35 +416,25 @@ fn search_patch(
     exe_data: &str,
     config_item: &ConfigItem,
 ) -> Result<Option<Patch>, MyError> {
-    //去除空格
-    let pattern = fix_blank(&config_item.pattern);
-    if pattern == "" {
-        return Ok(None);
-    };
-    let data = if config_item.which == "exe" {
+    let data = if config_item.1 == "exe" {
         exe_data
     } else {
         dll_data
     };
-    let replace = if &config_item.replace != "" {
-        &fix_blank(&config_item.replace)
-    } else {
-        &pattern
+    //去除空格
+    let pattern = fix_blank(&config_item.2);
+    if pattern == "" {
+        return Ok(None);
     };
-    //去除空格 修复省略 ?? 转换 ..
-    let mut replace = fix_ellipsis(&replace, &pattern);
-    //跳过搜索共存替换数据
-    let mut list = vec![&pattern];
-    let mut replace_num_loc = 0;
-    //判断是否需要替换序号
-    if !config_item.is_replace_num {
-        list.push(&replace);
+    let replace = if &config_item.3 != "" {
+        &config_item.3
     } else {
-        //查找##位置
-        let r = fix_number_sign(&replace)?;
-        replace_num_loc = r.0;
-        replace = r.1;
-    }
+        &config_item.2
+    };
+    //去除空格 修复省略
+    let replace = fix_ellipsis(&fix_blank(replace), &pattern);
+    //?? 转换 ..
+    let list = [&pattern, &replace];
     for x in list {
         let r_fixed = fix_wildcard(&x);
         let r = hex_search(&data, &r_fixed)?;
@@ -386,10 +444,9 @@ fn search_patch(
             return Ok(Some(Patch {
                 name: name.to_owned(),
                 loc: r.1,
-                replace_num_loc,
                 original,
                 patch,
-                config_item: config_item.clone(),
+                is_force_unlock: config_item.4,
             }));
         }
     }
@@ -416,7 +473,6 @@ fn hex_search(data: &str, reg_text: &str) -> Result<(bool, Vec<(usize, usize)>, 
     return Ok((isfind, locs, s));
 }
 
-/////下面是一些utils函数
 /**
  * 删除空格 换行
  */
@@ -426,21 +482,9 @@ fn fix_blank(text: &str) -> String {
 }
 
 /**
- * 特征码修复
- */
-fn fix_number_sign(text: &str) -> Result<(usize, String), MyError> {
-    let index = if let Some(index) = text.find("##") {
-        index / 2
-    } else {
-        return Err(MyError::PatternError);
-    };
-    Ok((index, text.replace("##", "FF")))
-}
-
-/**
  * 制作共存时 文件名 的 # 替换为 num
  */
-fn fix_corexist_file_name(text: &str, num: i64) -> String {
+fn fix_corexist_file_name(text: &str, num: i32) -> String {
     text.replace("#", &format!("{}", num))
 }
 
@@ -483,58 +527,4 @@ fn fix_patch_data(text: &str, text2: &str) -> Result<Vec<u8>, MyError> {
     let mut dst = vec![0; u1.len() / 2];
     hex_decode(&u1, &mut dst).map_err(|_| MyError::FixPatchDataError)?;
     Ok(dst)
-}
-
-/**
- * 从传参中取出共存序号
- */
-fn get_i64_from_value(value: &Value, key: &str) -> i64 {
-    if let Some(v) = value.get(key) {
-        if let Some(num) = v.as_i64() {
-            num
-        } else {
-            -1
-        }
-    } else {
-        -1
-    }
-}
-
-/**
- * 从传参中取出bool
- */
-fn get_bool_from_value(value: &Value, key: &str) -> bool {
-    if let Some(v) = value.get(key) {
-        if let Some(num) = v.as_bool() {
-            num
-        } else {
-            false
-        }
-    } else {
-        false
-    }
-}
-
-/**
- * get_new_exe_name
- */
-fn get_new_exe_name(coexist_number: i64) -> String {
-    let is_coexist = coexist_number <= 9 && coexist_number >= 0;
-    if is_coexist {
-        fix_corexist_file_name(NEW_WX_EXE_NAME, coexist_number)
-    } else {
-        WX_EXE_NAME.to_string()
-    }
-}
-
-/**
- * get_dll_exe_name
- */
-fn get_dll_exe_name(coexist_number: i64) -> String {
-    let is_coexist = coexist_number <= 9 && coexist_number >= 0;
-    if is_coexist {
-        fix_corexist_file_name(NEW_WX_DLL_NAME, coexist_number)
-    } else {
-        WX_DLL_NAME.to_string()
-    }
 }
