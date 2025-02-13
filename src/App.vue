@@ -83,7 +83,7 @@ async function wx_list_all(show_loading = false, show_msg = true) {
   await do_command("wx_list_all", {}, (r) => {
     console.log(r);
     list.value = r
-  }, show_loading, show_msg, "获取共存文件列表ok")
+  }, show_loading, show_msg, "成功获取共存文件列表")
 }
 
 /**
@@ -131,7 +131,7 @@ function wx_path_input(e) {
 async function deal_wx_path(file, show_toast) {
   if (!file) return
   if (!file.endsWith("Weixin.dll")) {
-    if (show_toast) show_contrast("错误的路径，请选择Weixin.dll文件",true)
+    if (show_toast) show_contrast("错误的路径，请手动选择Weixin.dll文件",true)
     return
   }
   let paths = file.split("\\")
