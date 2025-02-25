@@ -13,7 +13,7 @@
         </div>
         <div class="flex items-center gap">
             <Button v-if="isMain" label="刷新" @click="refresh" size="small" />
-            <Button v-if="isMain" label="位置" @click="loc" size="small" />
+            <Button v-if="isMain" label="目录" @click="loc" size="small" />
             <Button label="打开" @click="open_app" size="small" />
             <Button v-if="isMain && !unlock_unsupport" label="共存" @click="add" size="small" />
             <Button v-if="!isMain" label="删除" @click="del" size="small" severity="danger" />

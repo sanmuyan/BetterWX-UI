@@ -1,4 +1,4 @@
-<img align="center" alt="BetterWX" src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/1.1.0/src-tauri/icons/128x128@2x.png" title="BetterWX" width="200">
+<img align="center" alt="BetterWX" src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/1.1.1/src-tauri/icons/128x128@2x.png" title="BetterWX" width="200">
 
 ![](https://img.shields.io/badge/Platform-Windows-green)![](https://img.shields.io/github/stars/afaa1991/BetterWx-UI)
 
@@ -64,8 +64,8 @@ UI工具开源地址 [https://github.com/afaa1991/BetterWx-UI](https://github.co
 
     ```bash
     start "" "D:\AppData\Tencent\Weixin\Weixin.exe"
-    timeout /t 1 /nobreak >nul
     start "" "D:\AppData\Tencent\Weixin\Weixin1.exe"
+    timeout /t 1 /nobreak >nul
     ```
     - 修改“`D:\AppData\Tencent\Weixin`” 为你的微信安装目录。
 
@@ -74,8 +74,12 @@ UI工具开源地址 [https://github.com/afaa1991/BetterWx-UI](https://github.co
     -  以上内容保存到 `.bat` 文件，运行。
 
 
-
 ## 更新说明
+
+ - ### 1.1.1
+
+   - 调整了部分页面UI
+
 
  - ### 1.1.0
 
@@ -97,6 +101,6 @@ UI工具开源地址 [https://github.com/afaa1991/BetterWx-UI](https://github.co
     - 默认 管理员模式启动。 
 
 
-## 下载地址 1.1.0
- - [https://wwtt.lanzn.com/b0pmceqej 密码:4mb8](https://wwtt.lanzn.com/b0pmceqej)
+## 下载地址
+ - [https://wwtt.lanzn.com/b0pmh8e1i 密码:52pj](https://wwtt.lanzn.com/b0pmh8e1i)
 

@@ -1,36 +1,38 @@
 <template>
 
   <main class="container">
-    <Fieldset legend="路径设置">
-      <div class="flex m-b">
-        <FloatLabel variant="on" class="flex-1 m-r">
-          <InputText id="on_label" fluid v-model="wx_path" size="small" @input="wx_path_input" />
-          <label for="on_label">请选择Weixin.dll文件</label>
-        </FloatLabel>
-        <Button label="选择" class="m-r" size="small" @click="select_file" />
-        <Button label="52pojie" size="small" :badge="version" badgeSeverity="danger"  @click="open_52" />
-      </div>
-    </Fieldset>
-
     <Fieldset>
       <template #legend>
         <div class="flex row">
           <b class="m-r">功能区</b>
-          <Tag v-if="wx_ver" :value="wx_ver" severity="success"></Tag>
+          <Tag class="m-r" v-if="wx_ver" :value="`微信版本: ${wx_ver}`" severity="success"></Tag>
+          <Tag class="m-r" v-if="version" :value="`新版本: ${version}`" @click="tips_visible = true" severity="danger">
+          </Tag>
         </div>
       </template>
       <template v-for="(item, index) in list" :key="index">
-        <coexistList :isMain="item.id == -1" :data="item" :index="index" :num="item.id"  @switch_change="switch_change" @refresh="refresh" @loc="open_folder" @add="add"
-          @del="del" @open_app="open_app" class="border-b p-y">
+        <coexistList :isMain="item.id == -1" :data="item" :index="index" :num="item.id" @switch_change="switch_change"
+          @refresh="refresh" @loc="open_folder" @add="add" @del="del" @open_app="open_app" class="border-b p-y">
         </coexistList>
       </template>
     </Fieldset>
-
   </main>
-  <Toast />
   <div v-if="loading" class="float" style="height: 6px;">
     <ProgressBar mode="indeterminate" style="height: 6px;"></ProgressBar>
   </div>
+  <Dialog v-model:visible="tips_visible" modal header="提示" :style="{ width: '20rem' }">
+    <div class="flex col">
+      <label class="m-b">{{ `发现新版本: ${version}` }}</label>
+      <label class="m-y">{{ lanzou_url }}</label>
+      <label class="m-y">{{ lanzou_psw }}</label>
+      <div class="flex items-center justify-center gap m-y">
+        <Button label="网盘更新" @click="open_lanzou" size="small" />
+        <Button label="52破解" @click="open_52" size="small" />
+        <Button label="github" @click="open_github" size="small" />
+      </div>
+    </div>
+  </Dialog>
+  <Toast position="bottom-left" />
 </template>
 <script setup>
 import coexistList from "./components/coexist-list.vue";
@@ -50,6 +52,9 @@ const wx_path = ref("")
 const loading = ref(false)
 const list = ref([]);
 const version = ref("")
+const lanzou_url = ref("https://wwtt.lanzn.com/b0pmh8e1i")
+const lanzou_psw = ref("密码:52pj")
+const tips_visible = ref(false);
 
 onMounted(async () => {
   check_update()
@@ -64,7 +69,7 @@ onMounted(async () => {
   show_contrast("正在初始化,请稍等")
   let temp = await invoke("wx_install_loc");
   if (!temp[0] || !temp[1]) {
-    show_contrast("获取安装目录失败，请手动选择Weixin.dll位置",true)
+    show_contrast("获取安装目录失败,仅支持官方安装版本", true)
     loading.value = false
     return
   }
@@ -131,7 +136,7 @@ function wx_path_input(e) {
 async function deal_wx_path(file, show_toast) {
   if (!file) return
   if (!file.endsWith("Weixin.dll")) {
-    if (show_toast) show_contrast("错误的路径，请手动选择Weixin.dll文件",true)
+    if (show_toast) show_contrast("错误的路径,请手动选择Weixin.dll文件", true)
     return
   }
   let paths = file.split("\\")
@@ -157,9 +162,9 @@ async function switch_change(arg) {
   let back = JSON.parse(JSON.stringify(item))
   item.unlock = arg.unlock
   item.revoke = arg.revoke
-  let r = await do_command("wx_do_patch",  {patchInfo:{ unlock: arg.unlock, revoke: arg.revoke, number: item.id }}, (r) => {
+  let r = await do_command("wx_do_patch", { patchInfo: { unlock: arg.unlock, revoke: arg.revoke, number: item.id } }, (r) => {
     if (!r.length) {
-      show_contrast("好像失败了",true)
+      show_contrast("好像失败了", true)
       return
     }
     list.value[arg.index] = r[0]
@@ -184,12 +189,12 @@ async function add(arg) {
     if (ids.includes(i)) { continue } else { num = i; break }
   }
   if (num == 10) {
-    show_contrast("添加失败,已经有太多了",true)
+    show_contrast("添加失败,已经有太多了", true)
     return
   }
-  await do_command("wx_do_patch", {patchInfo:{ unlock: false, revoke: list.value[0].revoke, number: num }}, (r) => {
+  await do_command("wx_do_patch", { patchInfo: { unlock: false, revoke: list.value[0].revoke, number: num } }, (r) => {
     if (!r.length) {
-      show_contrast("好像失败了",true)
+      show_contrast("好像失败了", true)
       return
     }
     list.value.push(r[0])
@@ -215,6 +220,15 @@ async function open_folder() {
 async function open_52() {
   await do_command("wx_open_url", { url: "https://www.52pojie.cn/thread-1991091-1-1.html" }, true, true)
 }
+
+async function open_github() {
+  await do_command("wx_open_url", { url: "https://github.com/afaa1991/BetterWx-UI" }, true, true)
+}
+
+async function open_lanzou() {
+  await do_command("wx_open_url", { url: lanzou_url.value }, true, true)
+}
+
 async function refresh() {
   await wx_list_all(true, true)
 }
@@ -249,7 +263,7 @@ async function do_command(command, arg, cb, show_loading, show_msg = false, msg 
     }
     return r
   } catch (error) {
-    show_contrast(error,true)
+    show_contrast(error, true)
     return false
   } finally {
     if (show_loading) loading.value = false
@@ -259,152 +273,59 @@ async function do_command(command, arg, cb, show_loading, show_msg = false, msg 
 /**
  * toast
  */
-function show_contrast(detail,error=false,life) {
-  let severity = error? "error" : "contrast"
-  life = life?life:error?5000:2000
-  toast.add({ severity, summary: '消息', detail: detail, life: detail, life });
+function show_contrast(detail, error = false, life) {
+  let severity = error ? "error" : "contrast"
+  life = life ? life : error ? 5000 : 2000
+  toast.add({ severity, summary: '消息', detail: detail, life: detail, life});
 };
 
 /**
  * 1.0.2检测更新
  */
-async function check_update(){
+async function check_update() {
   try {
     const app_version = await getVersion();
     const new_version = await get_version();
-    if(new_version>app_version){
+    if (new_version > app_version) {
       version.value = new_version
+      //打开太快，关闭按钮好像显示异常
+      setTimeout(() => {
+        tips_visible.value = true
+      }, 1000);
     }
   } catch (error) {
-    version.value= ""
+    version.value = ""
   }
- 
+
 }
 
 function get_version() {
-    let base_urls = ["https://api.kkgithub.com/","https://api.github.com/"]
-    let url = "repos/afaa1991/BetterWx-UI"
-    let reqs = []
-    base_urls.forEach(item => {
-        reqs .push(http(item+url))
+  let base_urls = ["https://api.kkgithub.com/", "https://api.github.com/"]
+  let url = "repos/afaa1991/BetterWx-UI"
+  let reqs = []
+  base_urls.forEach(item => {
+    reqs.push(http(item + url))
+  });
+  return new Promise((resolve, reject) => {
+    Promise.any(reqs).then((values) => {
+      resolve(values);
+    }).catch(error => {
+      reject(error)
     });
-    return new Promise((resolve, reject) => {
-        Promise.any(reqs).then((values) => {
-            resolve(values);
-        }).catch(error => {
-            reject(error)
-        });
-    })
-  
+  })
+
 }
 
 async function http(url) {
-    return new Promise(async (resolve, reject) => {
-        let resp =  fetch(url)
-        .then((response) => response.json())
-        .then((data) => {
-            resolve(data.default_branch)
-        })
-        .catch((error) => {
-            reject(error);
-        });
-    })
+  return new Promise(async (resolve, reject) => {
+    return fetch(url)
+      .then((response) => response.json())
+      .then((data) => {
+        resolve(data.default_branch)
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  })
 }
 </script>
-
-<style>
-.flex {
-  display: flex;
-}
-
-.flex-1 {
-  flex: 1;
-}
-
-.w-100 {
-  width: 100%;
-}
-
-.row {
-  flex-direction: row;
-}
-
-.col {
-  flex-direction: column;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.justify-start {
-  justify-content: start;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.gap {
-  gap: 4px;
-}
-
-.m-x {
-  margin-left: 8px;
-  margin-right: 8px;
-}
-
-.m-y {
-  margin-top: 8px;
-  margin-bottom: 8px;
-}
-
-.m-b {
-  margin-bottom: 8px;
-}
-
-.m-r {
-  margin-right: 8px;
-}
-
-.p-t {
-  padding-top: 8px;
-}
-
-.p-b {
-  padding-bottom: 8px;
-}
-
-.p-y {
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-.border-b {
-  border-bottom: solid 1px;
-  border-color: color-mix(in srgb, var(--p-surface-200) calc(100%* var(--tw-border-opacity, 1)), transparent);
-}
-
-.float {
-
-  position: fixed;
-  width: 100%;
-  bottom: 0px;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-}
-
-.container {
-  padding: 8px;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-}
-</style>
