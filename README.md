@@ -1,6 +1,11 @@
-<img align="center" alt="BetterWX" src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/1.1.1/src-tauri/icons/128x128@2x.png" title="BetterWX" width="200">
 
-![](https://img.shields.io/badge/Platform-Windows-green)![](https://img.shields.io/github/stars/afaa1991/BetterWx-UI)
+<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/1.1.1/src-tauri/icons/128x128@2x.png" width="250px"></h3>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows-green">
+  <img src="https://img.shields.io/github/stars/afaa1991/BetterWx-UI">
+</p>
+
 
 # BetterWx-UI
 
