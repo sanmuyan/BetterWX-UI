@@ -1,7 +1,7 @@
 [package] 
 name = "betterwx-ui"
 version = "1.1.2"
-description = "a wx tool"
+description = "a betterwx tool"
 authors = ["afaa1991"]
 edition = "2021"
 
