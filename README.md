@@ -1,5 +1,5 @@
 
-<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/1.1.1/src-tauri/icons/128x128@2x.png" width="250px"></h3>
+<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/1.1.2/src-tauri/icons/128x128@2x.png" width="250px"></h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-green">
@@ -27,7 +27,7 @@ UI工具开源地址 [https://github.com/afaa1991/BetterWx-UI](https://github.co
 
 2.  以管理员模式启动，在修改之前，原文件会备份到 `Weixin.dll.bak` 和 `Weixin.exe.bak`。
 
-3.  防撤回无提示。【所有 `revokemsg` 消息变为未知消息，不响应撤回操作】
+3.  防撤回无提示，保留了PC本机可以撤回编辑的功能。【所有 `revokemsg` 消息变为未知消息，不响应撤回操作】
 
 4.  多开。【移除 `lock.ini` 锁文件检测】
 
@@ -80,6 +80,11 @@ UI工具开源地址 [https://github.com/afaa1991/BetterWx-UI](https://github.co
 
 
 ## 更新说明
+
+ - ### 1.1.2
+
+   - 修复就收不到语音消息的问题
+   - 注意：请使用1.1.1版本关闭所有功能后或使用官方安装包覆盖安装后再操作。
 
  - ### 1.1.1
 
