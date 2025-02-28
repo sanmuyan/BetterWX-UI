@@ -38,7 +38,7 @@ pub const UNLOCK:[ConfigType; 2] =[
 ];
 
 pub const REVOKE: [ConfigType; 2] = [
-    (
+    ( 
         "4.0.2",
         "dll",
         "4885C90F849D010000F0FF41??488B78??E992010000488D8DD0030000E8????????84C0746E",
