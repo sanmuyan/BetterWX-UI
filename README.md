@@ -1,5 +1,5 @@
 
-<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/1.1.2/src-tauri/icons/128x128@2x.png" width="250px"></h3>
+<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/1.1.3/src-tauri/icons/128x128@2x.png" width="250px"></h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-green">
@@ -80,6 +80,11 @@ UI工具开源地址 [https://github.com/afaa1991/BetterWx-UI](https://github.co
 
 
 ## 更新说明
+
+ - ### 1.1.3
+
+   - 支持4.0.3
+
 
  - ### 1.1.2
 

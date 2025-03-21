@@ -16,7 +16,16 @@ pub const WX_EXE_BAK_NAME: &str = "Weixin.exe.bak";
 //5 共存替换
 //6 是否搜索状态
 
-pub const UNLOCK:[ConfigType; 2] =[
+pub const UNLOCK:[ConfigType; 3] =[
+    (
+        "4.0.3",
+        "dll",
+        "555657534881ECC8010000488DAC248000000048C78540010000FEFFFFFF48C785A800000000000000B960000000",
+        "C3...",
+        true,
+        false,
+        true
+    ),
     (
         "4.0.2",
         "dll",
@@ -37,7 +46,16 @@ pub const UNLOCK:[ConfigType; 2] =[
         )
 ];
 
-pub const REVOKE: [ConfigType; 2] = [
+pub const REVOKE: [ConfigType; 3] = [
+    (
+        "4.0.3",
+        "dll",
+        "EB??488D8D000?0000E8????????84C0746E",
+        "...EB6E",
+        false,
+        false,
+        true,
+    ),
     (
         "4.0.2",
         "dll",

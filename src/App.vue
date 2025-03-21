@@ -300,8 +300,8 @@ async function check_update() {
 }
 
 function get_version() {
-  let base_urls = ["https://api.kkgithub.com/", "https://api.github.com/"]
-  let url = "repos/afaa1991/BetterWx-UI"
+  let base_urls = ["https://gitee.com/afaa1991/"]
+  let url = "BetterWx-Ui/raw/master/update.json"
   let reqs = []
   base_urls.forEach(item => {
     reqs.push(http(item + url))
@@ -321,7 +321,7 @@ async function http(url) {
     return fetch(url)
       .then((response) => response.json())
       .then((data) => {
-        resolve(data.default_branch)
+        resolve(data.version)
       })
       .catch((error) => {
         reject(error);
