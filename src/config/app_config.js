@@ -1,0 +1,16 @@
+// 网络请求的地址
+const UPDATE_BASE_URL = "https://gitee.com/afaa1991/BetterWx-UI/raw/master/.vscode/"
+// 更新文件的地址
+const UPDATE_URL = "update.json"
+// 是否保存规则
+const USE_SAVE_BASE_RULE = true
+// 是否保存配置
+const USE_SAVE_CONFIG = true
+// 是否保存readme
+const USE_SAVE_README = true
+// 消息显示的时间
+const MESSAGE_LIFE = 3000
+// 消息显示的时间
+const SPLASH_DELAY = 500
+
+export { UPDATE_BASE_URL,UPDATE_URL,USE_SAVE_BASE_RULE,USE_SAVE_CONFIG,MESSAGE_LIFE,USE_SAVE_README,SPLASH_DELAY}
