@@ -1,6 +1,6 @@
 <template>
     <div class="flex row justify-between items-center">
-        <div class="flex row justify-center">
+        <div class="flex">
             <b class="m-r">{{ fileInfo.name }}</b>
             <template v-for="(feature, index) in fileInfo.features" :key="index">
                 <div v-if="isShow(feature, 'switch')" class="flex items-center gap  m-x">
@@ -11,7 +11,7 @@
                 </div>
             </template>
         </div>
-        <div class="flex items-center gap">
+        <div class="flex gap">
             <template v-for="(feature, index) in fileInfo.features" :key="index">
                 <Button v-if="isShow(feature, 'button')" v-tooltip.top="toolTips(feature)" :label="feature.name"
                     @click="handleEvent($event,feature)" size="small" :severity="feature.severity ? feature.severity : ''"
