@@ -61,6 +61,10 @@ timeout /t 1 /nobreak >nul
 
 -  以上内容保存到 `.bat` 文件，运行。
 
-## ⬇️ 下载地址
+## 💾 下载地址
 
  - [https://wwtt.lanzn.com/b0pmh8e1i?请输入密码：52pj](https://wwtt.lanzn.com/b0pmh8e1i?请输入密码：52pj)
+
+## 📺 截图
+
+<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/2.0.0/screenshot.png" width="640px"></h3>
