@@ -45,11 +45,15 @@
 
 - 清除软件缓存，重启软件
 
+- 程序闪退，请安装webview2运行环境
+
+- [webview2下载地址](https://developer.microsoft.com/zh-cn/microsoft-edge/webview2/?form=MA13LH#download)
+
 ## 🖥️ 系统兼容性
 
 |    系统版本    |    支持情况    |        备注       |
 |---------------|---------------|-------------------|
-| Windows 10/11 |    ✅ 支持    | 需要有Edge浏览器   |
+| Windows 10/11 |    ✅ 支持    | 需要webview2运行环境   |
 | Windows 7/8   |    ❌ 不支持  |  |
 
 ## 🔄 批量启动多账号
