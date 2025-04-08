@@ -8,17 +8,18 @@
 
 # BetterWx-UI ✨
 
-微信多账号免扫码登录的终极解决方案
+多账号免扫码登录的终极解决方案
 
 ## 🔥 主要功能
 
 - ✅ 多账号免扫码登录
-- ✅ 微信多开支持
-- ✅ 消息防撤回功能
+- ✅ 多开支持
+- ✅ 消息防撤回
+- ✅ 消息撤回编辑
 
 ## 📌 支持版本
 
-- 微信Windows版 3.9 - 4.0 正式版
+- Windows版 3.9 - 4.0 正式版
 
 ## ⚙️ 功能说明
 
@@ -55,7 +56,7 @@ start "" "D:\AppData\Tencent\Weixin\Weixin.exe"
 start "" "D:\AppData\Tencent\Weixin\Weixin1.exe"
 timeout /t 1 /nobreak >nul
 ```
-- 修改"`D:\AppData\Tencent\Weixin`" 为你的微信安装目录。
+- 修改"`D:\AppData\Tencent\Weixin`" 为你的安装目录。
 
 - `Weixin1.exe` 共存的exe文件名。需要启动哪个，添加哪个。
 
