@@ -52,7 +52,7 @@
 | Windows 10/11 |    ✅ 支持    | 需要有Edge浏览器   |
 | Windows 7/8   |    ❌ 不支持  |  |
 
-### 🔄 批量启动多账号
+## 🔄 批量启动多账号
 
 ```bash
 start "" "D:\AppData\Tencent\Weixin\Weixin.exe"
