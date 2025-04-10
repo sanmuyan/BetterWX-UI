@@ -1,5 +1,6 @@
 use crate::structs::config::patterns::Patterns;
 use crate::structs::config::variables::Variables;
+use crate::structs::config::features::Features;
 use crate::structs::config::{
     get_item_by_code, ismain, replace_ellipsis, replace_wildcards, substitute_variables, GetCode,
 };
@@ -44,16 +45,15 @@ impl Patches {
         Ok(())
     }
 
-    // 屏蔽下这个方法，不能过滤否则会导致 build_file_info 时，无法获取到usedfiles
-    // 以后再看看怎么修改
-    // /**
-    //  * @description: 在搜索基址后，对 featrues 状态进行更新
-    //  */
-    // pub fn filter_patches_by_featrues(&mut self, features: &Features) -> Result<()> {
-    //     //let all_dependencies = features.extract_vec_string_dependencies();
-    //     //self.0.retain(|patch| all_dependencies.contains(&patch.code));
-    //     Ok(())
-    // }
+   
+    /**
+     * @description: 在搜索基址后，对 featrues 状态进行更新
+     */
+    pub fn filter_patches_by_featrues(&mut self, features: &Features) -> Result<()> {
+        let all_dependencies = features.extract_vec_string_dependencies();
+        self.0.retain(|patch| all_dependencies.contains(&patch.code));
+        Ok(())
+    }
 
     /**
      * @description: //所有补丁需要使用的文件集合

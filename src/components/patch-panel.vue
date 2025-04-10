@@ -3,7 +3,7 @@
         <div class="m-x not-select">
             <Tag :value="installName" :severity="tagSeverity1" class="m-r"></Tag>
             <Tag :value="`特征码版本: ${props.parseConfigRule.version}`" :severity="tagSeverity2"></Tag>
-            <div v-if="isValid">
+            <div v-if="parseConfigRule.installed">
                 <template v-for="(fileInfo) in filesInfo" :key="fileInfo.num">
                     <CoexistList :fileInfo="fileInfo" :rule="baseRule" @event="handleEvent" class="border-b p-y">
                     </CoexistList>
@@ -47,7 +47,8 @@ watch(() => props.init, async (newValue) => {
         }
         if (!isValid.value) {
             showToast(installName.value)
-        } else if (!inited.value) {
+        } 
+        if (!inited.value) {
             console.log(props.parseConfigRule)
             init()
         }
@@ -63,7 +64,9 @@ watch(() => props.init, async (newValue) => {
 async function init() {
     try {
         showLoading.value = true
+        console.log(props.parseConfigRule.variables);
         version.value = getValueByCode(props.parseConfigRule.variables, "install_version")
+
         let base = false
         if (USE_SAVE_BASE_RULE) {
             //读取基址缓存
@@ -256,7 +259,7 @@ const installName = computed(() => {
 })
 
 /**
- * @description: 是否安装且支持
+ * @description: 是否安装
  * @param {*} computed
  * @return {*}
  */

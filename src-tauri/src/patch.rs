@@ -96,7 +96,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             //首次搜索原始特征码
             let mut search_result = hex_search(file_data_str, &patch.pattern, patch.multiple)?;
             //如果没有找到，再搜索替换特征码
-            if !search_result.0 {
+            if !search_result.0 && !patch.replace.is_empty() {
                 search_result = hex_search(file_data_str, &patch.replace, patch.multiple)?
             }
             let (found, origina, addresses) = search_result;

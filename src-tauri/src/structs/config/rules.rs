@@ -105,10 +105,12 @@ impl Rule {
         //处理功能
         self.features
             .process(&self.variables, &mut self.patches, Some(features))?;
-        //处理依赖，不能处理，否则会导致 build_files_info 时，无法正确获取文件信息
-        //self.patches.filter_patches_by_featrues(&self.features)?;
+        //过滤下当前版本使用的补丁
+        self.patches.filter_patches_by_featrues(&self.features)?;
+        //判断所有self.patches是否全部为 suppoted
+        let all_supported = self.patches.0.iter().all(|patch| patch.supported);
         //初始化完成，设置支持状态
-        self.supported = true;
+        self.supported = all_supported;
         Ok(())
     }
 

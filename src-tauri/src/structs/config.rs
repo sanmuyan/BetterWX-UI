@@ -65,6 +65,9 @@ pub fn hex_decode_to_vec(hex_str: &str) -> Result<Vec<u8>> {
  * @return 替换后的字符串
  */
 pub fn replace_wildcards(wildcard_str: &str, origina: &str) -> Result<String> {
+    if wildcard_str.is_empty() {
+        return Ok(wildcard_str.to_string());
+    }
     // 确保两个字符串长度相同
     if origina.is_empty() {
         return Err(anyhow!("替换通配符,原始字符为空"));
@@ -227,13 +230,13 @@ where
     let install_version = variables
         .get_value("install_version")
         .ok_or_else(|| anyhow!("缺少必要变量: install_version"))?;
-    if let Some(dependency) = vec_data
+    if let Some(item) = vec_data
         .into_iter()
-        .find(|dependency| compare_versions(install_version, dependency.get_version()) >= 0)
+        .find(|item| compare_versions(install_version, item.get_version()) >= 0)
     {
-        return Ok(dependency);
+        return Ok(item);
     } else {
-        return Err(anyhow!("未找到匹配的 dependency:{}", install_version));
+        return Err(anyhow!("未找到匹配的版本的Item:{}", install_version));
     }
 }
 

@@ -5,6 +5,7 @@ use crate::structs::config::{
     get_item_by_variables_install_version, get_num_and_ismain, substitute_variables,
 };
 
+use std::collections::HashSet;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
@@ -53,37 +54,33 @@ impl Features {
         Ok(())
     }
 
-    // /**
-    //  * @description: 对所有 dependencies 依赖的patches code 扁平化处理
-    //  * @param {*} self
-    //  * @return {*}
-    //  */
-    // pub fn extract_vec_string_dependencies(&self) -> Vec<String> {
-    //     let mut unique_deps = HashSet::new();
-    //     self.0
-    //         .iter()
-    //         .filter_map(|feature| match feature {
-    //             Feature::FeatureDetail(fd) => {
-    //                 if !fd.disabled && fd.supported {
-    //                     match &fd.dependencies {
-    //                         Dependencies::VecString(vec_str) => Some(vec_str.clone()),
-    //                         _ => None,
-    //                     }
-    //                 } else {
-    //                     None
-    //                 }
-    //             }
-    //             _ => None,
-    //         })
-    //         .flatten()
-    //         .for_each(|dep| {
-    //             if !dep.is_empty() {
-    //                 unique_deps.insert(dep);
-    //             }
-    //         });
+    /**
+     * @description: 对所有 dependencies 依赖的patches code 扁平化处理
+     * @param {*} self
+     * @return {*}
+     */
+    pub fn extract_vec_string_dependencies(&self) -> Vec<String> {
+        let mut unique_deps = HashSet::new();
+        self.0
+            .iter()
+            .filter_map(|feature| match feature {
+                Feature::FeatureDetail(fd) => {
+                    match &fd.dependencies {
+                        Dependencies::VecString(vec_str) => Some(vec_str.clone()),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .flatten()
+            .for_each(|dep| {
+                if !dep.is_empty() {
+                    unique_deps.insert(dep);
+                }
+            });
 
-    //     unique_deps.into_iter().collect()
-    // }
+        unique_deps.into_iter().collect()
+    }
 
     /**
      * @description: 通过 code 取出对应的 feature
