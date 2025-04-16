@@ -1,4 +1,354 @@
 {
-    "version": "0.0.0",
-    "rules": []
+    "version": "0.0.4",
+    "rules": [
+        {
+            "code": "wechat",
+            "version": "3.9.12.51",
+            "name": "微信3.9(x64)",
+            "index": 0,
+            "description": "支持微信3.9.12.51",
+            "regedit": {
+                "path": "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WeChat",
+                "fields": [
+                    {
+                        "code": "install_version",
+                        "value": "DisplayVersion"
+                    },
+                    {
+                        "code": "install_location",
+                        "value": "InstallLocation"
+                    }
+                ]
+            },
+            "variables": [
+                {
+                    "code": "path_dll",
+                    "value": "${install_location}\\[${install_version}]\\WeChatWin.dll"
+                },
+                {
+                    "code": "path_exe",
+                    "value": "${install_location}\\WeChat.exe"
+                },
+                {
+                    "code": "new_path_dll",
+                    "value": "${install_location}\\[${install_version}]\\WeChatWin.dl${num}"
+                },
+                {
+                    "code": "new_path_exe",
+                    "value": "${install_location}\\WeChat${num}.exe"
+                }
+            ],
+            "patches": [
+                {
+                    "code": "revoke",
+                    "name": "消息防撤回",
+                    "description": "消息防撤回提示",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "pattern": "EBBF418B00240F3C02",
+                            "replace": "9090..."
+                        }
+                    ]
+                },
+                {
+                    "code": "mutex",
+                    "name": "多开互斥体",
+                    "description": "多开互斥体",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "pattern": "FF15????????488BF04532F64C8D25????????4885C00F84",
+                            "replace": "...90e9"
+                        }
+                    ]
+                },
+                {
+                    "code": "exe_dll",
+                    "name": "exe_WeChatWin.dll",
+                    "description": "修补Wechat.exe中调用的WeChatWin.dll,修改为WeChatWin.dll{n}",
+                    "target": "${path_exe}",
+                    "saveas": "${new_path_exe}",
+                    "multiple": true,
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "pattern": "570065004300680061007400570069006E002E0064006C006C",
+                            "replace": "...${num_u8}"
+                        }
+                    ]
+                },
+                {
+                    "code": "dll_dll",
+                    "name": "dll_WeChatWin.dll",
+                    "description": "修补WeChatWin.dll中调用的WeChatWin.dll,修改为WeChatWin.dl{n}",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "multiple": true,
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "pattern": "570065004300680061007400570069006E002E0064006C006C",
+                            "replace": "...${num_u8}"
+                        }
+                    ]
+                },
+                {
+                    "code": "dll_dll2",
+                    "name": "WeChatWin.dll2",
+                    "description": "修补WeChatWin.dll中调用的WeChatWin.dll,修改为WeChatWin.dl{n}",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "multiple": true,
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "pattern": "57654368617457696E2E646C6C",
+                            "replace": "...${num_u8}"
+                        }
+                    ]
+                },
+                {
+                    "code": "dll_dll3",
+                    "name": "wechatwin.dll",
+                    "description": "修补WeChatWin.dll中调用的wechatwin.dll,修改为wechatwin.dl{n}",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "multiple": true,
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "pattern": "770065006300680061007400770069006E002E0064006C006C",
+                            "replace": "...${num_u8}"
+                        }
+                    ]
+                },
+                {
+                    "code": "config",
+                    "name": "config.data",
+                    "description": "修补WeChatWin.dll中调用的config.data,修改为conf{n}g.data",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "multiple": true,
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "description": "",
+                            "pattern": "63006F006E006600690067002E0064006100740061",
+                            "replace": "63006F006E006600${num_u8}..."
+                        }
+                    ]
+                },
+                {
+                    "code": "host",
+                    "name": "host-redirect.xml",
+                    "description": "修补weixindll中host-redirect.xml为host-redirect.xm{n},和扫码登入服务器有关",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "pattern": "686F73742D72656469726563742E786D6C",
+                            "replace": "...${num_u8}"
+                        }
+                    ]
+                }
+            ],
+            "features": [
+                "refresh",
+                "mutex",
+                "clear",
+                "open",
+                "floder",
+                "revoke",
+                "del",
+                "note",
+                {
+                    "code": "coexist",
+                    "name": "共存",
+                    "method": "",
+                    "description": "制作共存文件",
+                    "inmain": true,
+                    "incoexist": false,
+                    "index": 5,
+                    "style": "button",
+                    "disabled": false,
+                    "supported": true,
+                    "target": "",
+                    "dependencies": [
+                        "mutex",
+                        "config",
+                        "exe_dll",
+                        "dll_dll",
+                        "dll_dll2",
+                        "dll_dll3",
+                        "config",
+                        "host"
+                    ]
+                }
+            ]
+        },
+        {
+            "code": "weixin",
+            "version": "4.0.3",
+            "name": "微信4",
+            "index": 0,
+            "description": "支持微信4正式版",
+            "regedit": {
+                "path": "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Weixin",
+                "fields": [
+                    {
+                        "code": "install_version",
+                        "value": "DisplayVersion"
+                    },
+                    {
+                        "code": "install_location",
+                        "value": "InstallLocation"
+                    }
+                ]
+            },
+            "variables": [
+                {
+                    "code": "path_dll",
+                    "value": "${install_location}\\${install_version}\\Weixin.dll",
+                    "name": "",
+                    "description": ""
+                },
+                {
+                    "code": "new_path_dll",
+                    "value": "${install_location}\\${install_version}\\Weixin.dl${num}",
+                    "name": "",
+                    "description": ""
+                },
+                {
+                    "code": "path_exe",
+                    "value": "${install_location}\\Weixin.exe",
+                    "name": "",
+                    "description": ""
+                },
+                {
+                    "code": "new_path_exe",
+                    "value": "${install_location}\\Weixin${num}.exe",
+                    "name": "",
+                    "description": ""
+                }
+            ],
+            "patches": [
+                {
+                    "code": "revoke",
+                    "name": "消息防撤回",
+                    "description": "消息防撤回无提示,本地撤回可编辑",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.3",
+                            "description": "",
+                            "pattern": "EB??488D8D000?0000E8????????84C0746E",
+                            "replace": "...EB6E"
+                        },
+                        {
+                            "version": "4.0.2",
+                            "description": "",
+                            "pattern": "4885C90F849D010000F0FF41??488B78??E992010000488D8DD0030000E8????????84C0746E",
+                            "replace": "...eb6e"
+                        },
+                        {
+                            "version": "4.0.0",
+                            "description": "",
+                            "pattern": "752148B87265766F6B656D73488905????????66C705????????6700C605????????01488D3D",
+                            "replace": "eb21..."
+                        }
+                    ]
+                },
+                {
+                    "code": "dllname",
+                    "name": "weixin.dll",
+                    "description": "修补weixinexe中调用的weixindll,修改为weixin.dl{n}",
+                    "target": "${path_exe}",
+                    "saveas": "${new_path_exe}",
+                    "patterns": [
+                        {
+                            "version": "4.0.0",
+                            "description": "",
+                            "pattern": "570065006900780069006E002E0064006C006C",
+                            "replace": "...${num_u8}"
+                        }
+                    ]
+                },
+                {
+                    "code": "host",
+                    "name": "host-redirect.xml",
+                    "description": "修补weixindll中host-redirect.xml为host-redirect.xm{n},和扫码登入服务器有关",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.0",
+                            "description": "",
+                            "pattern": "686F73742D72656469726563742E786D6C",
+                            "replace": "...${num_u8}"
+                        }
+                    ]
+                },
+                {
+                    "code": "config",
+                    "name": "global_config",
+                    "description": "修补weixindll中global_config为global_conf{n}g,用于登入状态缓存",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.0",
+                            "description": "",
+                            "pattern": "48B8676C6F62616C5F63488905????????C705????????6F6E666966C705????????6700",
+                            "replace": "...c705????????6f6e66${num_u8}66c705????????6700"
+                        }
+                    ]
+                },
+                {
+                    "code": "mutex",
+                    "name": "多开互斥体",
+                    "description": "互斥体,4.0.2版本使用，以上版本修改为了互斥体",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.3",
+                            "description": "",
+                            "pattern": "555657534881ECC8010000488DAC248000000048C78540010000FEFFFFFF48C785A800000000000000B960000000",
+                            "replace": "c3..."
+                        },
+                        {
+                            "version": "4.0.2",
+                            "description": "",
+                            "pattern": "554157415641545657534881ECD0010000488DAC248000000048C78548010000FEFFFFFF48C7451800000000B960000000",
+                            "replace": "c3..."
+                        },
+                        {
+                            "version": "4.0.0",
+                            "description": "",
+                            "pattern": "C74424??FFFFFFFF31F64531C041B9FFFFFFFFFF15????????85C0750F",
+                            "replace": "...eb0f"
+                        }
+                    ]
+                }
+            ],
+            "features": [
+                "refresh",
+                "mutex",
+                "clear",
+                "open",
+                "floder",
+                "revoke",
+                "del",
+                "note",
+                "coexist"
+            ]
+        }
+    ]
 }

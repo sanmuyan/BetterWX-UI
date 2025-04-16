@@ -30,7 +30,7 @@ async function http(url, options = {}) {
     if (error.name === "AbortError") {
       throw new Error("网络请求超时")
     }
-    throw error
+    throw new Error("网络请求错误")
   }
 }
 

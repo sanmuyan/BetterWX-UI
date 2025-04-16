@@ -390,5 +390,21 @@ const DEFAULT_FEATURE: &str = r#"[
       "dependencies": [
         ""
       ]
+    },
+    {
+      "code": "note",
+      "name": "备注",
+      "method": "",
+      "description": "",
+      "inmain": true,
+      "incoexist": true,
+      "index": 99,
+      "style": "button",
+      "disabled": false,
+      "supported": true,
+      "target": "",
+      "dependencies": [
+        ""
+      ]
     }
   ]"#;

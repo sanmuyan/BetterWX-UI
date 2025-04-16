@@ -5,13 +5,26 @@
             <Tag :value="`特征码版本: ${props.parseConfigRule.version}`" :severity="tagSeverity2"></Tag>
             <div v-if="parseConfigRule.installed">
                 <template v-for="(fileInfo) in filesInfo" :key="fileInfo.num">
-                    <CoexistList :fileInfo="fileInfo" :rule="baseRule" @event="handleEvent" class="border-b p-y">
+                    <CoexistList :fileInfo="fileInfo" :rule="baseRule" :note="getNote(fileInfo.num)"
+                        @event="handleEvent" class="border-b p-y">
                     </CoexistList>
                 </template>
             </div>
             <Loading :show="showLoading" />
         </div>
     </ScrollPanel>
+    <!-- input -->
+    <Dialog class="not-select" v-model:visible="showInputDialog" modal header="请输入" style="width: 20rem;" :closable="false">
+        <div class="flex col">
+            <div class="flex justify-center  gap m-y">
+                <InputText  class="w-100" type="text" v-model="inputValue"></InputText>
+            </div>
+            <div class="flex justify-end gap  m-y">
+                <Button type="button" label="取消" severity="secondary" @click="inputCancle" size="small"></Button>
+                <Button type="button" label="确认" @click="inputConfirm" size="small"></Button>
+            </div>
+        </div>
+    </Dialog>
 </template>
 
 <script setup>
@@ -36,6 +49,10 @@ const filesInfo = ref([])
 const showLoading = ref(false)
 const version = ref("")
 const initError = ref("")
+const notes = ref([])
+const showInputDialog = ref(false)
+const inputValue = ref(null)
+const inputIsConfirm = ref(false)
 onMounted(async () => {
 })
 
@@ -47,7 +64,7 @@ watch(() => props.init, async (newValue) => {
         }
         if (!isValid.value) {
             showToast(installName.value)
-        } 
+        }
         if (!inited.value) {
             console.log(props.parseConfigRule)
             init()
@@ -85,17 +102,19 @@ async function init() {
             }
         })
         baseRule.value = base
-        if (all_supported ) {
+        if (all_supported) {
             //写入基址缓存
-            if(USE_SAVE_BASE_RULE){
+            if (USE_SAVE_BASE_RULE) {
                 await save(baseRule.value)
             }
-        }else{
+        } else {
             //清除缓存
             clearAll()
         }
         filesInfo.value = await bridge.refreshFilesInfo(baseRule.value)
         console.log(filesInfo.value);
+        //加载备注
+        await getNotes()
     } catch (error) {
         console.log(error)
         initError.value = `出错了:${error}`
@@ -154,8 +173,12 @@ async function handleEvent(payload) {
                 await clearAll()
                 baseRule.value = {}
                 break
+            case "note":
+                await setNote(fileInfo)
+                break
             default:
-                throw new Error(`未实现方法:${method}`)
+                let name = feature.name || method
+                throw new Error(`未实现方法:${name}`)
         }
     } catch (error) {
         console.log(error)
@@ -164,6 +187,47 @@ async function handleEvent(payload) {
         showLoading.value = false
     }
 }
+
+
+/**
+ * @description: 获取备注
+ * @return {*}
+ */
+async function getNotes() {
+    let storeNotes = await read({
+        code: baseRule.value.code,
+        notes: []
+    })
+    notes.value = storeNotes?.notes || []
+    console.log("加载备注", notes.value);
+}
+
+/**
+ * @description: 设置备注
+ * @return {*}
+ */
+async function setNote(fileInfo) {
+    let index = notes.value.findIndex(item => item.num == fileInfo.num)
+    let lastValue = notes.value?.[index]?.note || ""
+    // 打开对话框并等待用户输入
+    let noteText = await getInputValue(lastValue)
+    if (!inputIsConfirm.value) return;  // 用户取消输入
+    noteText = noteText?.substring(0, 32)
+    if (index == -1) {
+        notes.value.push({
+            num: fileInfo.num,
+            note: noteText
+        })
+    } else {
+        notes.value[index].note = noteText.trim()
+    }
+    let storeData = {
+        code: baseRule.value.code,
+        notes: notes.value
+    }
+    await save(storeData)
+}
+
 
 /**
  * @description: 删除共存
@@ -247,6 +311,44 @@ async function makeCoexist(feature) {
         filesInfo.value.sort((a, b) => a.index - b.index)
     }
 }
+
+/**
+ * @description: 获取输入值
+ * @return {Promise<string>} 用户输入的值
+ */
+ function getInputValue(lastValue) {
+    return new Promise((resolve) => {
+        let lastShowLoading = showLoading.value 
+        showLoading.value = false
+        showInputDialog.value = true
+        inputIsConfirm.value= false
+        inputValue.value = lastValue || ""  // 清空上次输入  
+        // 监听对话框关闭
+        const unwatch = watch(showInputDialog, (newVal) => {
+            if (!newVal) {
+                unwatch()  // 停止监听
+                showLoading.value = lastShowLoading
+                resolve(inputValue.value.trim())
+            }
+        })
+    })
+}
+
+function inputCancle() {
+    inputValue.value = ""
+    inputIsConfirm.value = false
+    showInputDialog.value = false 
+}
+function inputConfirm() {
+    inputIsConfirm.value = true
+    showInputDialog.value = false 
+}
+
+
+const getNote = computed(() => (num) => {
+    let note = notes.value.find(item => item.num == num)?.note || ""
+    return note
+})
 
 const installName = computed(() => {
     if (!props.parseConfigRule.installed) {
