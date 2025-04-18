@@ -106,7 +106,7 @@ impl Rule {
         self.features
             .process(&self.variables, &mut self.patches, Some(features))?;
         //过滤下当前版本使用的补丁
-        self.patches.filter_patches_by_featrues(&self.features)?;
+        self.patches.retain_patches_by_featrues(&self.features)?;
         //判断所有self.patches是否全部为 suppoted
         let all_supported = self.patches.0.iter().all(|patch| patch.supported);
         //初始化完成，设置支持状态
@@ -169,7 +169,7 @@ impl Rule {
         let num = if index < 0 {
             "z".to_string()
         } else {
-            index.to_string().to_lowercase()
+            index.to_string()
         };
         //将num 转为 u8 数组
         let num_u8 = str_to_hex(&num);

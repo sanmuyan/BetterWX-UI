@@ -86,8 +86,8 @@ fn search_base_address(rule: Rule) -> Result<Rule, MyError> {
  * @description: 解析 config 规则
  */
 #[tauri::command(async)]
-fn refresh_files_fnfo(rule: Rule) -> Result<FilesInfo, MyError> {
-    Ok(app::refresh_files_fnfo(&rule)?)
+fn refresh_files_info(rule: Rule) -> Result<FilesInfo, MyError> {
+    Ok(app::refresh_files_info(&rule)?)
 }
 
 /*
@@ -95,8 +95,10 @@ fn refresh_files_fnfo(rule: Rule) -> Result<FilesInfo, MyError> {
 * @return {*} 返回修补基址后的rule
 */
 #[tauri::command(async)]
-fn apply_patch(patches: Patches, status: bool) -> Result<(), MyError> {
-    Ok(app::apply_patch(&patches, status)?)
+fn apply_patch(patches: Patches) -> Result<Patches, MyError> {
+    let mut patches = patches;
+    app::apply_patch(&mut patches)?;
+    Ok(patches)
 }
 
 /*
@@ -119,7 +121,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             parse_config,
             search_base_address,
-            refresh_files_fnfo,
+            refresh_files_info,
             apply_patch,
             build_file_info_by_num,
             is_files_exists,

@@ -5,6 +5,7 @@ use crate::structs::files_info::FilesInfo;
 
 use crate::patch;
 use crate::win;
+use anyhow::Ok;
 use anyhow::Result;
 
 /**
@@ -39,7 +40,7 @@ pub fn search_base_address(rule: &mut Rule) -> Result<()> {
  * @description: 搜索基址
  * @return {*} 返回修补基址后的rule
  */
-pub fn refresh_files_fnfo(rule: &Rule) -> Result<FilesInfo> {
+pub fn refresh_files_info(rule: &Rule) -> Result<FilesInfo> {
     let mut files_info = rule.build_files_info()?;
     for file_info in files_info.0.iter_mut() {
         //读取文件补丁信息
@@ -56,6 +57,6 @@ pub fn refresh_files_fnfo(rule: &Rule) -> Result<FilesInfo> {
 * @description: 应用补丁
 * @return {*} 返回修补基址后的rule
 */
-pub fn apply_patch(patches: &Patches, status: bool) -> Result<()> {
-    patch::apply_patch(&patches, status)
+pub fn apply_patch(patches: &mut Patches) -> Result<()> {
+    Ok(patch::apply_patch(patches)?)
 }

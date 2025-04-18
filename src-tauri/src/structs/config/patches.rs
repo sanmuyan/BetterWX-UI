@@ -1,8 +1,8 @@
+use crate::structs::config::features::{Dependencies, FeatureDetail, Features};
 use crate::structs::config::patterns::Patterns;
 use crate::structs::config::variables::Variables;
-use crate::structs::config::features::Features;
 use crate::structs::config::{
-    get_item_by_code, ismain, replace_ellipsis, replace_wildcards, substitute_variables, GetCode,
+    get_item_by_code, ismain, replace_ellipsis, replace_wildcards, substitute_variables, GetCode,fix_code_prefix
 };
 use crate::win::is_file_exists;
 
@@ -45,14 +45,36 @@ impl Patches {
         Ok(())
     }
 
-   
     /**
      * @description: 在搜索基址后，对 featrues 状态进行更新
      */
-    pub fn filter_patches_by_featrues(&mut self, features: &Features) -> Result<()> {
+    pub fn retain_patches_by_featrues(&mut self, features: &Features) -> Result<()> {
         let all_dependencies = features.extract_vec_string_dependencies();
-        self.0.retain(|patch| all_dependencies.contains(&patch.code));
+        self.0
+            .retain(|patch| all_dependencies.contains(&patch.code));
         Ok(())
+    }
+
+    /**
+     * @description: 在搜索基址后，对 featrues 状态进行更新
+     */
+    pub fn filter_patches_by_feature_detail(
+        &mut self,
+        feature_detail: &FeatureDetail,
+    ) -> Result<Patches> {
+        let all_dependencies = match &feature_detail.dependencies {
+            Dependencies::VecString(items) => items,
+            Dependencies::VecDependency(_) => &vec![],
+        }; 
+        let patches = self.0
+            .iter()
+            .filter(|patch| {
+                all_dependencies.iter()
+                    .any(|code| fix_code_prefix(code) == patch.code)
+            })
+            .cloned()
+            .collect();
+        Ok(Patches(patches))
     }
 
     /**
@@ -75,6 +97,7 @@ pub struct Patch {
     pub code: String,   //唯一标识
     pub target: String, //目标文件
     pub saveas: String, //保存为文件
+    #[serde(default)]
     pub name: String,   //名称
     #[serde(default)]
     pub description: String, //描述
@@ -100,6 +123,10 @@ pub struct Patch {
     //是否已经patched
     #[serde(default)]
     pub searched: bool, //是否已经搜索过
+    //应用补丁状态
+    #[serde(default)]
+    pub status: bool, //应用补丁状态
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -138,12 +165,12 @@ impl Patch {
             self.replace = partten.replace.to_string();
         }
         self.patterns.0.clear();
-        
+
         //处理 变量
         self.saveas = substitute_variables(&self.saveas, variables);
         self.target = substitute_variables(&self.target, variables);
-        self.replace = substitute_variables(&self.replace, variables).to_lowercase();
-        self.pattern = substitute_variables(&self.pattern, variables).to_lowercase();
+        self.replace = substitute_variables(&self.replace, variables).to_uppercase();
+        self.pattern = substitute_variables(&self.pattern, variables).to_uppercase();
         //build file_info 时使用
         if let Some(num) = variables.get_value("num") {
             if ismain(num) {

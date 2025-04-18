@@ -34,7 +34,7 @@ import { compareVersion, sleep } from "@/utils/utils.js"
 import { http } from "@/utils/http.js"
 import { save, read } from "@/utils/store.js"
 import { openUrl } from "@/utils/bridge.js"
-import { USE_SAVE_CONFIG,SPLASH_DELAY } from '@/config/app_config.js';
+import { USE_SAVE_CONFIG,SPLASH_DELAY,SPLASH_SUCCESS_DELAY } from '@/config/app_config.js';
 import { Window } from '@tauri-apps/api/window'
 import * as bridge from "@/utils/bridge.js"
 
@@ -92,7 +92,7 @@ async function closeDialog() {
         let parseConfig = await bridge.parseConfig(config)
         parseConfig.rules.sort((a, b) => a.index - b.index)
         await addMsg(`配置文件 ${config.version} 加载完成`)
-        await addMsg("软件初始化成功", 1500)
+        await addMsg("软件初始化成功", SPLASH_SUCCESS_DELAY)
         showLoading.value = false
         loaded({ parseConfig, updateInfo: updateInfo.value })
     } catch (error) {

@@ -1,12 +1,11 @@
 {
-    "version": "0.0.4",
+    "version": "0.0.5",
     "rules": [
         {
             "code": "wechat",
             "version": "3.9.12.51",
             "name": "微信3.9(x64)",
             "index": 0,
-            "description": "支持微信3.9.12.51",
             "regedit": {
                 "path": "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WeChat",
                 "fields": [
@@ -41,8 +40,6 @@
             "patches": [
                 {
                     "code": "revoke",
-                    "name": "消息防撤回",
-                    "description": "消息防撤回提示",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "patterns": [
@@ -55,8 +52,6 @@
                 },
                 {
                     "code": "mutex",
-                    "name": "多开互斥体",
-                    "description": "多开互斥体",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "patterns": [
@@ -69,8 +64,6 @@
                 },
                 {
                     "code": "exe_dll",
-                    "name": "exe_WeChatWin.dll",
-                    "description": "修补Wechat.exe中调用的WeChatWin.dll,修改为WeChatWin.dll{n}",
                     "target": "${path_exe}",
                     "saveas": "${new_path_exe}",
                     "multiple": true,
@@ -84,8 +77,6 @@
                 },
                 {
                     "code": "dll_dll",
-                    "name": "dll_WeChatWin.dll",
-                    "description": "修补WeChatWin.dll中调用的WeChatWin.dll,修改为WeChatWin.dl{n}",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "multiple": true,
@@ -99,8 +90,6 @@
                 },
                 {
                     "code": "dll_dll2",
-                    "name": "WeChatWin.dll2",
-                    "description": "修补WeChatWin.dll中调用的WeChatWin.dll,修改为WeChatWin.dl{n}",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "multiple": true,
@@ -114,8 +103,6 @@
                 },
                 {
                     "code": "dll_dll3",
-                    "name": "wechatwin.dll",
-                    "description": "修补WeChatWin.dll中调用的wechatwin.dll,修改为wechatwin.dl{n}",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "multiple": true,
@@ -129,8 +116,6 @@
                 },
                 {
                     "code": "config",
-                    "name": "config.data",
-                    "description": "修补WeChatWin.dll中调用的config.data,修改为conf{n}g.data",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "multiple": true,
@@ -145,8 +130,6 @@
                 },
                 {
                     "code": "host",
-                    "name": "host-redirect.xml",
-                    "description": "修补weixindll中host-redirect.xml为host-redirect.xm{n},和扫码登入服务器有关",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "patterns": [
@@ -154,6 +137,45 @@
                             "version": "3.9.12.51",
                             "pattern": "686F73742D72656469726563742E786D6C",
                             "replace": "...${num_u8}"
+                        }
+                    ]
+                },
+                {
+                    "code": "mutex_name",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "description": "",
+                            "pattern": "650043006800610074005F004100700070005F0049006E007300740061006E0063",
+                            "replace": "${num_u8}..."
+                        }
+                    ]
+                },
+                {
+                    "code": "window_name",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "description": "",
+                            "pattern": "5700650043006800610074004D00610069",
+                            "replace": "${num_u8}..."
+                        }
+                    ]
+                },
+                {
+                    "code": "window_login_name",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "3.9.12.51",
+                            "description": "",
+                            "pattern": "5700650043006800610074004D00610069",
+                            "replace": "${num_u8}..."
                         }
                     ]
                 }
@@ -165,8 +187,8 @@
                 "open",
                 "floder",
                 "revoke",
-                "del",
                 "note",
+                "del",
                 {
                     "code": "coexist",
                     "name": "共存",
@@ -174,30 +196,31 @@
                     "description": "制作共存文件",
                     "inmain": true,
                     "incoexist": false,
-                    "index": 5,
+                    "index": 150,
                     "style": "button",
                     "disabled": false,
                     "supported": true,
                     "target": "",
                     "dependencies": [
-                        "mutex",
+                        "mutex_name",
                         "config",
                         "exe_dll",
                         "dll_dll",
                         "dll_dll2",
                         "dll_dll3",
                         "config",
-                        "host"
+                        "host",
+                        "window_name",
+                        "window_login_name"
                     ]
                 }
             ]
         },
         {
             "code": "weixin",
-            "version": "4.0.3",
+            "version": "4.0.3.11",
             "name": "微信4",
             "index": 0,
-            "description": "支持微信4正式版",
             "regedit": {
                 "path": "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Weixin",
                 "fields": [
@@ -240,8 +263,6 @@
             "patches": [
                 {
                     "code": "revoke",
-                    "name": "消息防撤回",
-                    "description": "消息防撤回无提示,本地撤回可编辑",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "patterns": [
@@ -250,30 +271,16 @@
                             "description": "",
                             "pattern": "EB??488D8D000?0000E8????????84C0746E",
                             "replace": "...EB6E"
-                        },
-                        {
-                            "version": "4.0.2",
-                            "description": "",
-                            "pattern": "4885C90F849D010000F0FF41??488B78??E992010000488D8DD0030000E8????????84C0746E",
-                            "replace": "...eb6e"
-                        },
-                        {
-                            "version": "4.0.0",
-                            "description": "",
-                            "pattern": "752148B87265766F6B656D73488905????????66C705????????6700C605????????01488D3D",
-                            "replace": "eb21..."
                         }
                     ]
                 },
                 {
                     "code": "dllname",
-                    "name": "weixin.dll",
-                    "description": "修补weixinexe中调用的weixindll,修改为weixin.dl{n}",
                     "target": "${path_exe}",
                     "saveas": "${new_path_exe}",
                     "patterns": [
                         {
-                            "version": "4.0.0",
+                            "version": "4.0.3",
                             "description": "",
                             "pattern": "570065006900780069006E002E0064006C006C",
                             "replace": "...${num_u8}"
@@ -282,13 +289,11 @@
                 },
                 {
                     "code": "host",
-                    "name": "host-redirect.xml",
-                    "description": "修补weixindll中host-redirect.xml为host-redirect.xm{n},和扫码登入服务器有关",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "patterns": [
                         {
-                            "version": "4.0.0",
+                            "version": "4.0.3",
                             "description": "",
                             "pattern": "686F73742D72656469726563742E786D6C",
                             "replace": "...${num_u8}"
@@ -297,13 +302,11 @@
                 },
                 {
                     "code": "config",
-                    "name": "global_config",
-                    "description": "修补weixindll中global_config为global_conf{n}g,用于登入状态缓存",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "patterns": [
                         {
-                            "version": "4.0.0",
+                            "version": "4.0.3",
                             "description": "",
                             "pattern": "48B8676C6F62616C5F63488905????????C705????????6F6E666966C705????????6700",
                             "replace": "...c705????????6f6e66${num_u8}66c705????????6700"
@@ -312,8 +315,6 @@
                 },
                 {
                     "code": "mutex",
-                    "name": "多开互斥体",
-                    "description": "互斥体,4.0.2版本使用，以上版本修改为了互斥体",
                     "target": "${path_dll}",
                     "saveas": "${new_path_dll}",
                     "patterns": [
@@ -322,18 +323,99 @@
                             "description": "",
                             "pattern": "555657534881ECC8010000488DAC248000000048C78540010000FEFFFFFF48C785A800000000000000B960000000",
                             "replace": "c3..."
-                        },
+                        }
+                    ]
+                },
+                {
+                    "code": "mutex_name",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
                         {
-                            "version": "4.0.2",
+                            "version": "4.0.3",
                             "description": "",
-                            "pattern": "554157415641545657534881ECD0010000488DAC248000000048C78548010000FEFFFFFF48C7451800000000B960000000",
-                            "replace": "c3..."
-                        },
+                            "pattern": "580057006500430068006100",
+                            "replace": "${num_u8}..."
+                        }
+                    ]
+                },
+                {
+                    "code": "window_name",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
                         {
-                            "version": "4.0.0",
+                            "version": "4.0.3",
                             "description": "",
-                            "pattern": "C74424??FFFFFFFF31F64531C041B9FFFFFFFFFF15????????85C0750F",
-                            "replace": "...eb0f"
+                            "pattern": "7800570065006300680061007400570069006E0064006F0077",
+                            "replace": "...${num_u8}"
+                        }
+                    ]
+                },
+                {
+                    "code": "window_login_name",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.3",
+                            "description": "",
+                            "pattern": "5700650043006800610074004D00610069",
+                            "replace": "${num_u8}..."
+                        }
+                    ]
+                },
+                {
+                    "code": "revoke2",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.3",
+                            "description": "",
+                            "pattern": "488B0848898D200300004889BD280300004889F2E8????????89C6",
+                            "replace": "...488BB520040000"
+                        }
+                    ]
+                },
+                {
+                    "code": "revoke2_cmp",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.3",
+                            "description": "",
+                            "pattern": "E85D470000E9680200000F1F840000000000",
+                            "replace": "E85D4700004883F8000F8563020000909090"
+                        }
+                    ]
+                },
+                {
+                    "code": "revoke2_text1",
+                    "description": "窗口撤回提示文本",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.3",
+                            "description": "",
+                            "pattern": "E69A82E4B88DE694AFE68C81E8AFA5E58685E5AEB9EFBC8CE8AFB7E59CA8E6898BE69CBAE4B88AE69FA5E79C8B00",
+                            "replace": "E692A4E59B9EE4BA86E4B880E69DA1E6B688E681AF00..."
+                        }
+                    ]
+                },
+                {
+                    "code": "revoke2_text2",
+                    "description": "列表撤回提示文本",
+                    "target": "${path_dll}",
+                    "saveas": "${new_path_dll}",
+                    "patterns": [
+                        {
+                            "version": "4.0.3",
+                            "description": "",
+                            "pattern": "5BE4B88DE694AFE68C81E7B1BBE59E8BE6B688E681AF5D00",
+                            "replace": "5BE692A4E59B9EE4BA86E4B880E69DA1E6B688E681AF5D00"
                         }
                     ]
                 }
@@ -344,10 +426,66 @@
                 "clear",
                 "open",
                 "floder",
-                "revoke",
                 "del",
+                "coexist",
                 "note",
-                "coexist"
+                {
+                    "code": "revoke",
+                    "name": "撤回",
+                    "method": "patch",
+                    "description": "调整防撤回状态",
+                    "inmain": true,
+                    "incoexist": true,
+                    "index": 0,
+                    "style": "switch",
+                    "disabled": false,
+                    "supported": true,
+                    "target": "",
+                    "dependencies": [
+                        "revoke",
+                        "-revoke2",
+                        "-revoke2_cmp",
+                        "-revoke2_text1",
+                        "-revoke2_text2"
+                    ]
+                },
+                {
+                    "code": "revoke2",
+                    "name": "丐版提示",
+                    "method": "patch",
+                    "description": "撤回提示(丐版)",
+                    "inmain": true,
+                    "incoexist": true,
+                    "index": 20,
+                    "style": "switch",
+                    "supported": true,
+                    "dependencies": [
+                        "revoke2",
+                        "revoke2_cmp",
+                        "revoke2_text1",
+                        "revoke2_text2",
+                        "-revoke"
+                    ]
+                },
+                {
+                    "code": "revoke2_text",
+                    "name": "改字",
+                    "method": "patch_input",
+                    "description": "修改撤回提示文本",
+                    "inmain": false,
+                    "incoexist": true,
+                    "index": 121,
+                    "tdelay": 300,
+                    "style": "button",
+                    "supported": true,
+                    "dependfeature": [
+                        "revoke2"
+                    ],
+                    "dependencies": [
+                        "revoke2_text1",
+                        "revoke2_text2"
+                    ]
+                }
             ]
         }
     ]

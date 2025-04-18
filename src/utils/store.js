@@ -56,7 +56,7 @@ async function read(baseData) {
  */
 async function save(data, clean = false) {
     let { key, version, cleanable } = getSaveKey(data)
-    console.log("缓存写入", key, version)
+    console.log("缓存写入", key, version,data)
     let store = await init(key, cleanable)
     await store.set(key, {
         version,

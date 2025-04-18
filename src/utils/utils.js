@@ -92,8 +92,87 @@ function replaceVariables(json, variables, preprocessor) {
     traverse(json)
     return json
 }
+/**
+ * 修复code前缀
+ * @param {*} text 
+ * @returns 
+ */
+function fixCodePrefix(code) {
+    return code.replace(/^[!+-]+/, '');
+}
 
+/**
+ * 判断code前缀类型
+ * @param {*} str 
+ * @returns 
+ */
+function codePrefixType(code) {
+    if (!code) return 0;
+    const firstChar = code.charAt(0);
+    if (firstChar === '!') return 1;
+    if (firstChar === '+') return 2;
+    if (firstChar === '-') return 3;
+    return 0;
+}
 
+/**
+ * 根据code前缀类型获取status
+ * @param {*} code
+ * @param {*} status
+ */
+function getStatusBycCdePrefix(code,status) {
+    switch (codePrefixType(code)) {
+        case 0: return status;
+        case 1: return !status; 
+        case 2: return true;
+        case 3: return false;
+    }
+}
+
+/**
+ * 将文本转为大端序的两位十六进制字符串
+ * @param {*} text 
+ * @returns 
+ */
+function textToBigHex(text,pushEnd) {
+    // 创建TextEncoder将字符串转为Uint8Array
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(text);
+    
+    // 将每个字节转为大端序的两位十六进制字符串
+    let hexString = '';
+    for (let i = 0; i < bytes.length; i++) {
+        // 使用padStart确保始终是两位十六进制
+        hexString += bytes[i].toString(16).padStart(2, '0');
+    }
+    if(pushEnd){
+        hexString += '00' 
+    }
+    return hexString.toUpperCase(); // 转为大写字母形式
+}
+
+/**
+ * 将大端序十六进制字符串转换为文本（支持中文且不区分大小写）
+ * @param {string} hexStr 十六进制字符串
+ * @returns {string} 解码后的文本
+ */
+function bigHexToText(hexStr) {
+    // 统一转为大写处理（不区分大小写）
+    hexStr = hexStr.toUpperCase();
+    // 将十六进制字符串转为字节数组
+    const bytes = [];
+    for (let i = 0; i < hexStr.length; i += 2) {
+        const byteStr = hexStr.substring(i,i+ 2);
+        // 遇到00立即终止
+        if (byteStr === '00') break;
+        
+        bytes.push(parseInt(byteStr, 16));
+    }
+    
+    // 使用TextDecoder解码（自动处理中文）
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(new Uint8Array(bytes));
+}
 /**
  * 延迟执行
  * @param {number} ms - 延迟时间，单位毫秒
@@ -132,4 +211,4 @@ function getValueByCode(variables,code) {
 }
 
 
-export { compareVersion,num2u8,ismain,fixWildcards,replaceVariables, sleep,isEmpty,getValueByCode }
+export { compareVersion,num2u8,ismain,fixWildcards,replaceVariables, sleep,isEmpty,getValueByCode,fixCodePrefix,getStatusBycCdePrefix,bigHexToText,textToBigHex }

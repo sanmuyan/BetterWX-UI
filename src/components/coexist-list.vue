@@ -1,6 +1,6 @@
 <template>
 
-    <div class="flex row justify-between items-center">
+    <div class="flex row justify-between items-center" style="height: 48px;">
         <div class="flex col justify-between">
             <div class="flex row">
                 <b class="m-r">{{ fileInfo.name }}</b>
@@ -13,7 +13,7 @@
                     </div>
                 </template>
             </div>
-            <b class="m-r text-ellipsis" style="font-size: 0.8rem;width: 40vw;height: 1rem;">{{ note }}</b>
+            <b v-if="note" class="m-r text-ellipsis" style="font-size: 0.8rem;width: 40vw;height: 1rem;">{{ note }}</b>
         </div>
         <div class="flex gap">
             <template v-for="(feature, index) in fileInfo.features" :key="index">
@@ -66,7 +66,7 @@ const isShow = computed(() => (feature, style) => {
 const toolTips = computed(() => (feature) => {
     return {
         value: feature.description,
-        showDelay: 1000
+        showDelay: feature.tdelay || 1000
     }
 })
 

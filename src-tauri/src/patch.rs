@@ -2,7 +2,7 @@ use crate::structs::config::patches::{Address, Patches};
 use crate::structs::config::{hex_decode_to_vec, replace_wildcards};
 
 use anyhow::{anyhow, Result};
-use faster_hex::hex_string;
+use faster_hex::hex_string_upper;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -11,7 +11,7 @@ use std::collections::HashMap;
  * @param patches 包含所有补丁信息的不可变引用
  * @return 成功返回Ok(()), 失败返回错误信息
  */
-pub fn apply_patch(patches: &Patches, status: bool) -> Result<()> {
+pub fn apply_patch(patches: &mut Patches) -> Result<()> {
     let mut file_cache: HashMap<String, Vec<u8>> = HashMap::new();
     // 先验证所有补丁数据
     for patch in patches.0.iter() {
@@ -20,7 +20,7 @@ pub fn apply_patch(patches: &Patches, status: bool) -> Result<()> {
         }
     }
     // 应用补丁
-    for patch in patches.0.iter() {
+    for patch in patches.0.iter_mut() {
         if !patch.supported || patch.disabled {
             continue;
         }
@@ -35,7 +35,7 @@ pub fn apply_patch(patches: &Patches, status: bool) -> Result<()> {
             return Err(anyhow!("读取文件失败:{}", &path));
         }
         // 设置 应用补丁的数据，是还原还是打补丁
-        let patch_bytes = if status {
+        let patch_bytes = if patch.status {
             hex_decode_to_vec(&patch.replace)?
         } else {
             hex_decode_to_vec(&patch.pattern)?
@@ -52,6 +52,7 @@ pub fn apply_patch(patches: &Patches, status: bool) -> Result<()> {
             file_data[address.start..address.end].copy_from_slice(&patch_bytes);
             //patch.patched = status;
         }
+        patch.patched = patch.status;
     }
     // 保存修改后的文件
     for (path, data) in file_cache {
@@ -92,7 +93,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             patch.searched = true;
             let file_data_str = file_cache_str
                 .entry(patch.saveas.to_string())
-                .or_insert_with(|| hex_string(file_data));
+                .or_insert_with(|| hex_string_upper(file_data));
             //首次搜索原始特征码
             let mut search_result = hex_search(file_data_str, &patch.pattern, patch.multiple)?;
             //如果没有找到，再搜索替换特征码
@@ -104,30 +105,33 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             // 根据搜索结果修改补丁信息
             if found {
                 patch.addresses = addresses;
-                patch.patched = &patch.pattern != &origina;
                 patch.origina = origina;
                 //修复通配符 . 返回的前台
                 patch.replace = replace_wildcards(&patch.replace, &patch.origina)?;
                 patch.pattern = replace_wildcards(&patch.pattern, &patch.origina)?;
+                patch.patched = &patch.pattern != &patch.origina;
+                patch.status = patch.patched;
             }
             println!(
-                "搜索结果: {} - name:{}  - patched:{} - supported:{}, addesses: {:?}",
-                found, &patch.name, patch.patched, patch.supported, patch.addresses
+                "搜索结果: {} - code:{}  - patched:{} - supported:{}, addesses: {:?}",
+                found, &patch.code, patch.patched, patch.supported, patch.addresses
             );
+           
         } else {
             // 读取模式
             let mut patched = true;
             for address in patch.addresses.iter_mut() {
                 let slice = &file_data[address.start..address.end];
-                let hex_str = hex_string(slice);
+                let hex_str = hex_string_upper(slice);
                 patched = patched
                     && match hex_str {
-                        _ if hex_str == patch.replace => true,
+                        _ if hex_str != patch.origina => true,
                         _ => false,
                     };
             }
             patch.patched = patched;
-            println!("读取模式: {} - name:{}", patch.patched, patch.name)
+            patch.status = patched;
+            println!("读取模式: {} - code:{}", patch.patched, patch.code)
         }
     }
     Ok(())
@@ -147,7 +151,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
  */
 fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, String, Vec<Address>)> {
     let reg =
-        Regex::new(&reg_text.to_ascii_lowercase()).map_err(|e| anyhow!("特征码错误 {}", e))?;
+        Regex::new(&reg_text.to_ascii_uppercase()).map_err(|e| anyhow!("特征码错误 {}", e))?;
     let mut result = Vec::new();
     let mut origina = String::new();
     let captures: Vec<_> = reg.captures_iter(data).collect();

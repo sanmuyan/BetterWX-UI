@@ -14,11 +14,15 @@
         </div>
     </ScrollPanel>
     <!-- input -->
-    <Dialog class="not-select" v-model:visible="showInputDialog" modal header="请输入" style="width: 20rem;" :closable="false">
+    <Dialog class="not-select" v-model:visible="inputDialog.show" modal :header="inputDialog.title"
+        style="width: 30rem;" :closable="false">
         <div class="flex col">
-            <div class="flex justify-center  gap m-y">
-                <InputText  class="w-100" type="text" v-model="inputValue"></InputText>
-            </div>
+            <template v-for="(item, index) in inputDialog.texts" :key="index">
+                <div class="flex col justify-center  gap m-b">
+                    <b class="text-ellipsis">{{ item.label }}</b>
+                    <InputText class="w-100" type="text" v-model="item.text"></InputText>
+                </div>
+            </template>
             <div class="flex justify-end gap  m-y">
                 <Button type="button" label="取消" severity="secondary" @click="inputCancle" size="small"></Button>
                 <Button type="button" label="确认" @click="inputConfirm" size="small"></Button>
@@ -34,7 +38,7 @@ import Loading from "@/components/loading.vue"
 import * as bridge from "@/utils/bridge.js"
 import { read, save, clearAll } from "@/utils/store.js"
 import { USE_SAVE_BASE_RULE } from '@/config/app_config.js'
-import { getValueByCode } from "@/utils/utils.js"
+import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, textToBigHex, bigHexToText } from "@/utils/utils.js"
 
 const props = defineProps({
     parseConfigRule: { type: Object, default: {}, required: true },
@@ -50,9 +54,7 @@ const showLoading = ref(false)
 const version = ref("")
 const initError = ref("")
 const notes = ref([])
-const showInputDialog = ref(false)
-const inputValue = ref(null)
-const inputIsConfirm = ref(false)
+const inputDialog = ref({})
 onMounted(async () => {
 })
 
@@ -88,7 +90,6 @@ async function init() {
         if (USE_SAVE_BASE_RULE) {
             //读取基址缓存
             base = await read(props.parseConfigRule)
-            console.log("加载缓存基址")
         }
         if (!base?.version) {
             base = await bridge.searchBaseAddress(props.parseConfigRule)
@@ -98,7 +99,7 @@ async function init() {
         base.patches.forEach(item => {
             if (!item.supported) {
                 all_supported = false
-                showToast(`搜索补丁基址失败: ${item.name}`)
+                showToast(`搜索补丁基址失败: ${item.name || item.code}`)
             }
         })
         baseRule.value = base
@@ -136,12 +137,10 @@ async function handleEvent(payload) {
     let fileInfo = filesInfo.value.find(item => item.num == num)
     let feature = fileInfo?.features.find(item => item.code == code)
     if (showLoading.value) {
-        feature.status = status
-        await nextTick()
-        feature.status = !status
         showToast("请等待上一个操作完成")
         return
     }
+    await nextTick()
     try {
         showLoading.value = true
         if (!baseRule.value?.version) {
@@ -164,7 +163,10 @@ async function handleEvent(payload) {
                 await bridge.openFolder(feature.target)
                 break
             case "patch":
-                await applyPatch(feature, fileInfo, status)
+                await doPatch(fileInfo, feature, status)
+                break
+            case "patch_input":
+                await doPatchInput(fileInfo, feature)
                 break
             case "coexist":
                 await makeCoexist(feature)
@@ -181,6 +183,8 @@ async function handleEvent(payload) {
                 throw new Error(`未实现方法:${name}`)
         }
     } catch (error) {
+        feature.status = !status
+        await nextTick()
         console.log(error)
         showToast(error)
     } finally {
@@ -208,11 +212,17 @@ async function getNotes() {
  */
 async function setNote(fileInfo) {
     let index = notes.value.findIndex(item => item.num == fileInfo.num)
-    let lastValue = notes.value?.[index]?.note || ""
+    let text = notes.value?.[index]?.note || ""
     // 打开对话框并等待用户输入
-    let noteText = await getInputValue(lastValue)
-    if (!inputIsConfirm.value) return;  // 用户取消输入
-    noteText = noteText?.substring(0, 32)
+    console.log();
+    let texts = [{
+        text: text,
+        maxLen: 32,
+    }]
+    let noteText = await getInputValue(texts, "请输入备注")
+    if (!inputDialog.value.confirm) return;  // 用户取消输入
+    console.log(noteText[0]);
+    noteText = noteText?.[0].result.substring(0, 32)
     if (index == -1) {
         notes.value.push({
             num: fileInfo.num,
@@ -239,36 +249,135 @@ async function del(fileInfo) {
 }
 
 /**
+ * @param feature 
+ * @param fileInfo 
+ * @param status 
+ * @param extFeatures 
+ */
+async function doPatchInput(fileInfo, feature) {
+    //检查前置功能
+    let dependfeature = feature.dependfeature || []
+    if (dependfeature.length > 0) {
+        dependfeature.forEach(code => {
+            let find = fileInfo.features.find(item => item.code == code)
+            if (!find || !find.status) {
+                throw new Error(`请先开启 ${find.name || find.code} 功能`)
+            }
+            return true
+        })
+    }
+    let dependencies = feature.dependencies
+    let patchesFilter = filterPatchesByDependencies(fileInfo, dependencies)
+    if (patchesFilter.length == 0) {
+        throw new Error(`找不到 ${feature.name || feature.code} 对应的 patch`)
+    }
+    let texts = []
+    patchesFilter.forEach(patch => {
+        let text = patch.replace || patch.origina || patch.pattern || ""
+        let hasZero = text.endsWith("00")
+        if (text.length == 0) {
+            throw new Error(`补丁特征码错误`)
+        }
+        texts.push({
+            code: patch.code,
+            text: bigHexToText(text),
+            encode: true,
+            hasZero,
+            maxLen: text.length/2,
+            label: patch.description || patch.name || patch.code,
+        })
+    })
+    let title = feature.description || feature.name || feature.code
+    texts = await getInputValue(texts, title)
+    if (!inputDialog.value.confirm || !texts) return;
+    let patches = []
+    patchesFilter.forEach(patch => {
+        let find = texts.find(item => item.code == patch.code)
+        if (!find) {
+            throw new Error(`未找到 ${patch.code} 的输入`) 
+        }
+        if (find.result.length < patch.origina.length) {
+            find.result+= patch.origina.substring(find.result.length)
+        }
+        if(patch.replace !== find.result){
+            patch.replace = find.result
+            patch.status = true
+            patches.push(patch)
+        }
+    })
+    console.log(patches);
+    if (patches.length == 0) {
+        return 
+    }
+    return applyPatches(fileInfo, patches)
+}
+/**
  * @description: 执行补丁操作
  * @param code 
  * @param status 
  */
-async function applyPatch(feature, fileInfo, status, extFeatures = []) {
+async function doPatch(fileInfo, feature, status, extFeatures = []) {
     console.log("applyPatch", feature);
     status = feature.style == "switch" ? status : true
     //同步状态
     feature.status = status
+    //await nextTick()
     await nextTick()
     let features = [feature, ...extFeatures]
     let dependencies = features.map(item => item.dependencies).flat()
-    //await nextTick()
-    let patchesFilter = fileInfo.patches.filter(patch =>
-        dependencies.some(dep => dep === patch.code)
-    )
+    let patchesFilter = filterPatchesByDependencies(fileInfo, dependencies, status)
+    return applyPatches(fileInfo, patchesFilter)
+}
+
+/**
+ * 通过依赖过滤出需要打补丁的文件
+ * @param fileInfo 
+ * @param dependencies 
+ */
+function filterPatchesByDependencies(fileInfo, dependencies, status) {
+    let patchesFilter = []
+    fileInfo.patches.forEach(patch => {
+        const index = dependencies.findIndex(dep => fixCodePrefix(dep) === patch.code)
+        if (index !== -1) {
+            let newStatus = getStatusBycCdePrefix(dependencies[index], status)
+            let newPatch = JSON.parse(JSON.stringify(patch))
+            newPatch.status = newStatus
+            patchesFilter.push(newPatch)
+        }
+    })
+    return patchesFilter
+}
+
+
+/**
+ * @description: 应用补丁
+ * @param fileInfo 
+ * @param patches 
+ */
+async function applyPatches(fileInfo, patches) {
     //取出依赖的 patch
-    if (patchesFilter.length == 0) {
-        throw new Error(`未找到依赖补丁:${feature.name}`)
+    if (patches.length == 0) {
+        throw new Error(`应用补丁数据无效`)
     }
-    try {
-        // 调用后台执行补丁操作
-        console.log(patchesFilter);
-        patchesFilter = await bridge.applyPatch(patchesFilter, status)
-    } catch (error) {
-        //失败，还原weitch状态
-        feature.status = !status
-        console.log("调用后台执行补丁操作失败")
-        throw error
-    }
+    console.log("调用后台执行补丁操作", patches);
+    // 调用后台执行补丁操作
+    patches = await bridge.applyPatch(patches)
+    //重置所有featrues status
+    fileInfo.features.forEach(feature => {
+        feature.status = feature.dependencies.every(code => {
+            if (!code) {
+                return feature.status;
+            }
+            const fixedCode = fixCodePrefix(code);
+            const patch = patches.find(p => p.code === fixedCode);
+            const needStatus = getStatusBycCdePrefix(code, true);
+            if (!patch) {
+                return feature.status;
+            }
+            return patch.patched === needStatus;
+        });
+    })
+    console.log("修补后的fileinfo", fileInfo);
     return fileInfo
 }
 
@@ -303,9 +412,10 @@ async function makeCoexist(feature) {
         feature.status = true
     })
     //打补丁，保存文件
-    await applyPatch(nowFeature, fileInfo, true, extFeatures)
+    await doPatch(fileInfo, nowFeature, true, extFeatures)
     //添加的 fileInfo 到 filesInfo 中，展示到页面上
     //是否存在
+    fileInfo.features.sort((a, b) => a.index - b.index)
     if (!filesInfo.value.find(item => item.num == num)) {
         filesInfo.value.push(fileInfo)
         filesInfo.value.sort((a, b) => a.index - b.index)
@@ -316,32 +426,55 @@ async function makeCoexist(feature) {
  * @description: 获取输入值
  * @return {Promise<string>} 用户输入的值
  */
- function getInputValue(lastValue) {
+function getInputValue(texts, title) {
+    title = title || "请输入"
+    texts = texts || [{}]
     return new Promise((resolve) => {
-        let lastShowLoading = showLoading.value 
+        let lastShowLoading = showLoading.value
         showLoading.value = false
-        showInputDialog.value = true
-        inputIsConfirm.value= false
-        inputValue.value = lastValue || ""  // 清空上次输入  
+        inputDialog.value = {
+            show: true,
+            texts: texts,
+            title,
+            confirm: false
+        }
         // 监听对话框关闭
-        const unwatch = watch(showInputDialog, (newVal) => {
-            if (!newVal) {
+        const unwatch = watch(inputDialog, (newVal) => {
+            if (!newVal.show) {
                 unwatch()  // 停止监听
                 showLoading.value = lastShowLoading
-                resolve(inputValue.value.trim())
+                resolve(inputDialog.value.texts)
             }
-        })
+        }, { deep: true })
     })
 }
 
 function inputCancle() {
-    inputValue.value = ""
-    inputIsConfirm.value = false
-    showInputDialog.value = false 
+    inputDialog.value.show = false
 }
+
+
 function inputConfirm() {
-    inputIsConfirm.value = true
-    showInputDialog.value = false 
+    for (let index = 0; index < inputDialog.value.texts.length; index++) {
+        const item = inputDialog.value.texts[index];
+        item.text = item.text.trim()
+        let newText = item.text
+        let textLength = newText.length
+        if (item.encode) {
+            newText = textToBigHex(newText, item.hasZero,item.maxLen)
+            textLength = newText.length / 2 
+        }
+        //长度
+        if (item.maxLen && textLength > item.maxLen) {
+            let prefix = item.label ? `输入 ${item.label} 太长了，` : ""
+            let suffix = item.encode ? `，[1个中文长度为3]` : ""
+            showToast(`${prefix}输入长度为：${textLength}，最大长度为：${item.maxLen}。${suffix}`)
+            return
+        }
+        item.result = newText
+    }
+    inputDialog.value.confirm = true
+    inputDialog.value.show = false
 }
 
 

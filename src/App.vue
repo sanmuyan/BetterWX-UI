@@ -72,9 +72,9 @@ const disableRefresh = () => {
  */
 function loaded(payload) {
   parseConfig.value = payload.data.parseConfig
-  console.log(parseConfig.value);
+  console.log("解析config",parseConfig.value);
   updateInfo.value = payload.data.updateInfo
-  console.log(updateInfo.value )
+  console.log("updateInfo",updateInfo.value )
 }
 
 /**

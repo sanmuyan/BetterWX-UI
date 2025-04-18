@@ -143,7 +143,7 @@ fn substitute_variables(value: &str, variables: &Variables) -> String {
     while let Some(start) = result.find("${") {
         if let Some(end) = result[start..].find('}') {
             let full_range = start..start + end + 1;
-            let  var_name = &result[start + 2..start + end];
+            let  var_name = &result[start + 2..start + end].to_lowercase();
             if let Some(var) = variables.get_value(var_name) {
                 //如果是主程序，且替换字符包含 num || num_u8
                 if is_main && (var_name == "num" || var_name == "num_u8") {
@@ -160,6 +160,47 @@ fn substitute_variables(value: &str, variables: &Variables) -> String {
     }
     result
 }
+
+/**
+ * 修复 code 前缀
+ */
+pub fn fix_code_prefix(text: &str) -> String {
+    text.chars()
+        .skip_while(|c| matches!(c, '!' | '+' | '-'))
+        .collect()
+}
+
+/**
+ * code 前缀类型
+ * 0: 无
+ * 1: !
+ * 2: +
+ */
+pub fn code_prefix_type(str: &str) -> u8 {
+    if str.is_empty() {
+        return 0;
+    }
+    match str.chars().next().unwrap() {
+        '!' => 1,
+        '+' => 2,
+        '-' => 3,
+        _ => 0,
+    }
+}
+
+/**
+ * 根据 code 前缀，获取 status
+ */
+pub fn get_status_by_code_prefix(code: &str, status: bool) -> bool {
+    match code_prefix_type(code) {
+        0 => status,
+        1 => !status,
+        2 => true,
+        3 => false,
+        _ => status, // 默认情况，虽然理论上不会发生
+    }
+}
+
 
 /**
  * @description: 比较两个版本号的大小
@@ -265,7 +306,7 @@ const DEFAULT_FEATURE: &str = r#"[
       "description": "调整防撤回状态",
       "inmain": true,
       "incoexist": true,
-      "index": 6,
+      "index": 0,
       "style": "switch",
       "disabled": false,
       "supported": true,
@@ -281,7 +322,7 @@ const DEFAULT_FEATURE: &str = r#"[
       "description": "调整多开状态",
       "inmain": true,
       "incoexist": false,
-      "index": 7,
+      "index": 30,
       "style": "switch",
       "disabled": false,
       "supported": true,
@@ -291,23 +332,60 @@ const DEFAULT_FEATURE: &str = r#"[
       ]
     },
     {
-      "code": "coexist",
-      "name": "共存",
+      "code": "clear",
+      "name": "清缓",
       "method": "",
-      "description": "制作共存文件",
+      "description": "清除软件缓存",
       "inmain": true,
       "incoexist": false,
-      "index": 5,
+      "index": 100,
       "style": "button",
       "disabled": false,
       "supported": true,
       "target": "",
-      "dependencies": [
-        "mutex",
-        "config",
-        "host",
-        "dllname"
-      ]
+      "dependencies": []
+    },
+    {
+      "code": "refresh",
+      "name": "刷新",
+      "method": "",
+      "description": "重新读取所有文件状态",
+      "inmain": true,
+      "incoexist": false,
+      "index": 110,
+      "style": "button",
+      "disabled": false,
+      "supported": true,
+      "target": "",
+      "dependencies": []
+    },
+    {
+      "code": "floder",
+      "name": "目录",
+      "method": "",
+      "description": "打开文件所在目录",
+      "inmain": true,
+      "incoexist": false,
+      "index": 120,
+      "style": "button",
+      "disabled": false,
+      "supported": true,
+      "target": "${install_location}",
+      "dependencies": []
+    },
+    {
+      "code": "note",
+      "name": "备注",
+      "method": "",
+      "description": "",
+      "inmain": true,
+      "incoexist": true,
+      "index": 130,
+      "style": "button",
+      "disabled": false,
+      "supported": true,
+      "target": "",
+      "dependencies": []
     },
     {
       "code": "open",
@@ -316,14 +394,33 @@ const DEFAULT_FEATURE: &str = r#"[
       "description": "运行当前程序",
       "inmain": true,
       "incoexist": true,
-      "index": 3,
+      "index": 140,
       "style": "button",
       "disabled": false,
       "supported": true,
       "target": "${path_exe}",
       "saveas": "${new_path_exe}",
+      "dependencies": []
+    },
+    {
+      "code": "coexist",
+      "name": "共存",
+      "method": "",
+      "description": "制作共存文件",
+      "inmain": true,
+      "incoexist": false,
+      "index": 150,
+      "style": "button",
+      "disabled": false,
+      "supported": true,
+      "target": "",
       "dependencies": [
-        ""
+        "mutex_name",
+        "config",
+        "host",
+        "dllname",
+        "window_name",
+        "-mutex"
       ]
     },
     {
@@ -333,78 +430,12 @@ const DEFAULT_FEATURE: &str = r#"[
       "description": "删除共存文件",
       "inmain": false,
       "incoexist": true,
-      "index": 4,
+      "index": 151,
       "style": "button",
       "disabled": false,
       "supported": true,
       "severity":"danger",
       "target": "",
-      "dependencies": [
-        ""
-      ]
-    },
-    {
-      "code": "floder",
-      "name": "目录",
-      "method": "",
-      "description": "打开文件所在目录",
-      "inmain": true,
-      "incoexist": false,
-      "index": 2,
-      "style": "button",
-      "disabled": false,
-      "supported": true,
-      "target": "${install_location}",
-      "dependencies": [
-        ""
-      ]
-    },
-    {
-      "code": "refresh",
-      "name": "刷新",
-      "method": "",
-      "description": "重新读取所有文件状态",
-      "inmain": true,
-      "incoexist": false,
-      "index": 1,
-      "style": "button",
-      "disabled": false,
-      "supported": true,
-      "target": "",
-      "dependencies": [
-        ""
-      ]
-    },
-    {
-      "code": "clear",
-      "name": "清缓",
-      "method": "",
-      "description": "清除软件缓存",
-      "inmain": true,
-      "incoexist": false,
-      "index": 0,
-      "style": "button",
-      "disabled": false,
-      "supported": true,
-      "target": "",
-      "dependencies": [
-        ""
-      ]
-    },
-    {
-      "code": "note",
-      "name": "备注",
-      "method": "",
-      "description": "",
-      "inmain": true,
-      "incoexist": true,
-      "index": 99,
-      "style": "button",
-      "disabled": false,
-      "supported": true,
-      "target": "",
-      "dependencies": [
-        ""
-      ]
+      "dependencies": []
     }
   ]"#;

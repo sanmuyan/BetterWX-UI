@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core"
  * @param {*} path 
  */
 async function parseConfig(config) {
-    return await invoke('parse_config',{config})
+    return await invoke('parse_config', { config })
 }
 
 /**
@@ -13,7 +13,7 @@ async function parseConfig(config) {
  * @param {*} path 
  */
 async function isFileExists(path) {
-    return await invoke('is_file_exists',{path})
+    return await invoke('is_file_exists', { path })
 }
 
 /**
@@ -21,35 +21,35 @@ async function isFileExists(path) {
  * @param {*} path 
  */
 async function isFilesExists(files) {
-    return await invoke('is_files_exists',{files})
+    return await invoke('is_files_exists', { files })
 }
 
 /**
  * @description: 删除一组文件
  */
 async function delFiles(files) {
-    await invoke('del_files',{files})
+    await invoke('del_files', { files })
 }
 
 /**
  * @description: 运行应用
  */
 async function runApp(file) {
-    await invoke('run_app',{file})
+    await invoke('run_app', { file })
 }
 
 /**
  * @description: 打开网页
  */
 async function openUrl(url) {
-    await invoke('open_url',{url})
+    await invoke('open_url', { url })
 }
 
 /**
  * @description: 打开文件夹
  */
 async function openFolder(folder) {
-    await invoke('open_folder',{folder})
+    await invoke('open_folder', { folder })
 }
 
 
@@ -58,8 +58,8 @@ async function openFolder(folder) {
  * @param {*} rule 
  * @returns 
  */
-async function  searchBaseAddress(rule) {
-    return await invoke('search_base_address',{rule}) 
+async function searchBaseAddress(rule) {
+    return await invoke('search_base_address', { rule })
 }
 
 /**
@@ -67,11 +67,11 @@ async function  searchBaseAddress(rule) {
  * @param {*} rule 
  * @returns 
  */
-async function  refreshFilesInfo(rule) {
-    let filesInfo = await invoke('refresh_files_fnfo',{rule}) 
-    filesInfo.sort((a,b)=>a.index-b.index)
-    filesInfo.forEach(fileInfo=>{
-        fileInfo.features.sort((a,b)=>a.index-b.index)
+async function refreshFilesInfo(rule) {
+    let filesInfo = await invoke('refresh_files_info', { rule })
+    filesInfo.sort((a, b) => a.index - b.index)
+    filesInfo.forEach(fileInfo => {
+        fileInfo.features.sort((a, b) => a.index - b.index)
     })
     return filesInfo
 }
@@ -83,8 +83,8 @@ async function  refreshFilesInfo(rule) {
  * @param {*} patches 
  * @return {*} patches
  */
-async function applyPatch(patches,status) {
-    return await invoke('apply_patch',{patches,status})
+async function applyPatch(patches) {
+    return await invoke('apply_patch', { patches })
 }
 
 /**
@@ -93,8 +93,8 @@ async function applyPatch(patches,status) {
  * @param {*} num 
  * @returns 
  */
-async function buildFileInfoByNum(rule,num) {
-    return await invoke('build_file_info_by_num',{rule,num})
+async function buildFileInfoByNum(rule, num) {
+    return await invoke('build_file_info_by_num', { rule, num })
 }
 
 export {

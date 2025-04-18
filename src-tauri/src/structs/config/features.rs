@@ -2,7 +2,7 @@ use crate::structs::config::patches::Patches;
 use crate::structs::config::variables::Variables;
 use crate::structs::config::GetVersion;
 use crate::structs::config::{
-    get_item_by_variables_install_version, get_num_and_ismain, substitute_variables,
+    get_item_by_variables_install_version, get_num_and_ismain, substitute_variables,fix_code_prefix,get_status_by_code_prefix
 };
 
 use std::collections::HashSet;
@@ -109,7 +109,7 @@ impl Features {
         //处理功能
         self.process(variables, patches, None)?;
         //处理依赖
-        //patches.filter_patches_by_featrues(&self)?;
+        //patches.retain_patches_by_featrues(&self)?;
         Ok(())
     }
 }
@@ -209,20 +209,22 @@ impl Feature {
                         patches
                             .0
                             .iter()
-                            .any(|patch| patch.code == *code && patch.supported && !patch.disabled)
+                            .any(|patch| patch.code == fix_code_prefix(code) && patch.supported && !patch.disabled)
                     });
                     // 校验其依赖关系，中是否存在 对应的 patch, 并将其 status 字段设置为 true
-                    feature.status = true;
                     feature.status = deps.iter().all(|code| {
-                        //不需要依赖补丁，则返回真
                         if code.is_empty() {
                             return true;
                         }
-                        // 在 patches 查找是否可用存在状态，如果存在一个  patched 为 false 的，则返回 false
-                        !patches
-                            .0
-                            .iter()
-                            .any(|patch| patch.code == *code && !patch.patched)
+                        let fixed_code = fix_code_prefix(code);
+                        let patch = patches.0.iter().find(|p| p.code == fixed_code);
+                        match patch {
+                            Some(p) => {
+                                let need_status = get_status_by_code_prefix(code, true);
+                                p.patched == need_status
+                            },
+                            None => false
+                        }
                     });
                 }
             }
@@ -311,13 +313,18 @@ pub struct FeatureDetail {
     pub dependencies: Dependencies,
     #[serde(default)]
     pub status: bool, // 当前功能状态
+    #[serde(default)]
+    pub tdelay: u32,   // 文本显示延迟
+    #[serde(default)]
+    pub dependfeature: Vec<String>,//前置功能
+
 }
 /**
  * @description: Dependencies 序列化默认值
  * @return {*} Dependencies::VecString
  */
 fn default_vec_string() -> Dependencies {
-    Dependencies::VecString(vec!["".to_string()])
+    Dependencies::VecString(vec![])
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
