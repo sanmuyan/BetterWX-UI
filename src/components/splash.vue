@@ -57,9 +57,10 @@ async function checkUpdate() {
         const appVersion = await getVersion()
         const appName = await getName()
         // 设置title
-        setTitle(appName, appVersion) 
+        setTitle(appName, "2.0.3 测试版") 
+       // setTitle(appName, appVersion) 
         updateInfo.value = await http(UPDATE_URL + "?r=" + Math.random())
-        setTitle(updateInfo.value.name || updateInfo.value,appVersion)
+       // setTitle(updateInfo.value.name || updateInfo.value,appVersion)
         const hasUpdate = compareVersion(appVersion, updateInfo.value.version) < 0
         console.log(`本地软件版本号:${appVersion}, 软件版本号:${updateInfo.value.version}`)
         if (hasUpdate) {
