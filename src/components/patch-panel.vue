@@ -67,7 +67,7 @@ watch(() => props.init, async (newValue) => {
         if (!isValid.value) {
             showToast(installName.value)
         }
-        if (!inited.value) {
+        if (!inited.value && props.parseConfigRule.installed) {
             console.log("props.parseConfigRule",props.parseConfigRule)
             init()
         }
@@ -496,7 +496,7 @@ const getNote = computed(() => (num) => {
 
 const installName = computed(() => {
     if (!props.parseConfigRule.installed) {
-        return `未安装: ${props.parseConfigRule.name}`
+        return `未安装: ${props.parseConfigRule.name || props.parseConfigRule.code}`
     } else if (!props.parseConfigRule.supported) {
         return `不支持此版本: ${version.value}`
     } else {

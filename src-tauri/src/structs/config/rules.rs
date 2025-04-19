@@ -118,11 +118,16 @@ impl Rule {
      * @description: 检查是否可用
      */
     fn check_status_available(&self) -> Result<()> {
+        let name = if self.name.is_empty() {
+            &self.name
+        } else {
+            &self.code
+        };
         if self.disabled {
-            return Err(anyhow!("已禁用: {:?}", self.code));
+            return Err(anyhow!("已禁用: {:?}", name));
         }
         if !self.installed {
-            return Err(anyhow!("未安装: {:?}", self.code));
+            return Err(anyhow!("未安装: {:?}", name));
         }
         Ok(())
     }
