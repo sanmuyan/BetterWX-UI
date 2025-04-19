@@ -3,7 +3,7 @@
         <div class="flex col justify-center items-center" style="height: 200px; width: 300px;">
             <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="transparent" />
             <TransitionGroup name="fade" tag="div" class="text-center w-full overflow-hidden m-y" style="height: 60px;">
-                <div style="text-align: center;" v-for="(message, index) in mesages" :key="index"
+                <div v-for="(message, index) in mesages" :key="index"
                     :style="{ opacity: 1 - index * 0.15 }" class="w-full text-center">
                     {{ message }}
                 </div>
@@ -15,7 +15,7 @@
         :closable="updateInfo.notforce == true">
         <div class="flex col">
             <label class="m-b">{{ `发现新版本: ${updateInfo.version}` }}</label>
-            <label class="m-y">{{ updateInfo.description }}</label>
+            <label class="m-b text-prewarp">{{ updateInfo.description }}</label>
             <div class="flex items-center justify-center gap m-y">
                 <template v-for="(button, index) in updateInfo.buttons" :key="index">
                     <Button :label="button.name" @click="openUrl(button.url)" size="small"
@@ -34,9 +34,10 @@ import { compareVersion, sleep } from "@/utils/utils.js"
 import { http } from "@/utils/http.js"
 import { save, read } from "@/utils/store.js"
 import { openUrl } from "@/utils/bridge.js"
-import { USE_SAVE_CONFIG,SPLASH_DELAY,SPLASH_SUCCESS_DELAY } from '@/config/app_config.js';
+import { USE_SAVE_CONFIG, SPLASH_DELAY, SPLASH_SUCCESS_DELAY, TEST_MODE } from '@/config/app_config.js';
 import { Window } from '@tauri-apps/api/window'
 import * as bridge from "@/utils/bridge.js"
+import { decryptText } from "@/utils/crypto.js"
 
 const updateInfo = ref({})
 const showLoading = ref(true)
@@ -57,10 +58,13 @@ async function checkUpdate() {
         const appVersion = await getVersion()
         const appName = await getName()
         // 设置title
-        setTitle(appName, "2.0.3 测试版") 
-       // setTitle(appName, appVersion) 
+        let showVersion = TEST_MODE ? `${appVersion} 测试版` : appVersion
+        setTitle(appName, showVersion)
         updateInfo.value = await http(UPDATE_URL + "?r=" + Math.random())
-       // setTitle(updateInfo.value.name || updateInfo.value,appVersion)
+        //从更新文件加载app名称
+        if (!TEST_MODE && updateInfo.value.name) {
+            setTitle(updateInfo.value.name || appName, appVersion)
+        }
         const hasUpdate = compareVersion(appVersion, updateInfo.value.version) < 0
         console.log(`本地软件版本号:${appVersion}, 软件版本号:${updateInfo.value.version}`)
         if (hasUpdate) {
@@ -89,7 +93,7 @@ async function closeDialog() {
         await addMsg("正在检查配置文件更新")
         let config = await loadConfig()
         // 处理配置文件
-        
+
         let parseConfig = await bridge.parseConfig(config)
         parseConfig.rules.sort((a, b) => a.index - b.index)
         await addMsg(`配置文件 ${config.version} 加载完成`)
@@ -127,8 +131,12 @@ async function loadConfig() {
     if (compareVersion(config.version, updateInfo.value.config.version) < 0) {
 
         await addMsg("发现配置文件: " + updateInfo.value.config.version)
-        config = await http(updateInfo.value.config.url + "?r=" + Math.random())
-        console.log(config);
+        const appName = await getName()
+        config = await http(updateInfo.value.config.url + "?r=" + Math.random(), { text: true })
+        let key = `${appName} ${updateInfo.value.config.version}`
+        console.log("解密key", key);
+        config = JSON.parse(decryptText(config,key))
+        console.log("解析配置文件", config)
         if (updateInfo.value.config.version != config.version) {
             throw new Error("update和config配置文件版本号不一致")
         }

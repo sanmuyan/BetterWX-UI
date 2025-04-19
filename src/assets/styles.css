@@ -125,6 +125,12 @@
   text-overflow: ellipsis;
 }
 
+.text-prewarp {
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /*全局缩放*/
 html {
   font-size: 13px;

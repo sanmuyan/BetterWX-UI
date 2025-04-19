@@ -43,7 +43,7 @@ async function init(key, cleanable = true) {
  */
 async function read(baseData) {
     let { key, version, cleanable } = getSaveKey(baseData)
-    console.log("缓存读取", key, version)
+    console.log("缓存读取","key:", key,"version:", version)
     let store = await init(key, cleanable)
     let storeData = await store.get(key)
     return storeData?.data && (storeData?.version == version || !version )? storeData.data : false
@@ -94,7 +94,7 @@ function getSaveKey(data) {
  */
 function getBaseRuleSaveKey(data) {
     let key = `${data.code}_base_rule`
-    console.log(data.variables);
+    console.log("store getBaseRuleSaveKey",data.variables);
     let version = `${getValueByCode(data.variables, "install_version") || "0.0.1"}_${data.version || "0.0.1"}`
     return { key, version, cleanable: true }
 }

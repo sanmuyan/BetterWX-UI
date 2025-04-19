@@ -5,7 +5,7 @@
  * @returns {number} 1: version1 > version2, -1: version1 < version2, 0: 相等
  */
 function compareVersion(version1, version2) {
-    if(!version1 || !version2) throw new Error("版本号不能为空")
+    if (!version1 || !version2) throw new Error("版本号不能为空")
     const v1 = version1.split(".").map(Number)
     const v2 = version2.split(".").map(Number)
     const maxLength = Math.max(v1.length, v2.length)
@@ -52,7 +52,7 @@ function fixWildcards(str1, str2) {
     // 将两个字符串转换为数组以便逐个字符处理
     const arr1 = str1.split('')
     const arr2 = str2.split('')
-    
+
     // 遍历两个数组，将str2中的通配符替换为str1的对应字符
     for (let i = 0; i < arr2.length; i++) {
         if (arr2[i] === '.') {
@@ -62,7 +62,6 @@ function fixWildcards(str1, str2) {
     // 将处理后的数组重新组合成字符串并返回
     return arr2.join('')
 }
-
 
 /**
  * @description: 变量替换
@@ -92,6 +91,7 @@ function replaceVariables(json, variables, preprocessor) {
     traverse(json)
     return json
 }
+
 /**
  * 修复code前缀
  * @param {*} text 
@@ -120,10 +120,10 @@ function codePrefixType(code) {
  * @param {*} code
  * @param {*} status
  */
-function getStatusBycCdePrefix(code,status) {
+function getStatusBycCdePrefix(code, status) {
     switch (codePrefixType(code)) {
         case 0: return status;
-        case 1: return !status; 
+        case 1: return !status;
         case 2: return true;
         case 3: return false;
     }
@@ -134,19 +134,19 @@ function getStatusBycCdePrefix(code,status) {
  * @param {*} text 
  * @returns 
  */
-function textToBigHex(text,pushEnd) {
+function textToBigHex(text, pushEnd) {
     // 创建TextEncoder将字符串转为Uint8Array
     const encoder = new TextEncoder();
     const bytes = encoder.encode(text);
-    
+
     // 将每个字节转为大端序的两位十六进制字符串
     let hexString = '';
     for (let i = 0; i < bytes.length; i++) {
         // 使用padStart确保始终是两位十六进制
         hexString += bytes[i].toString(16).padStart(2, '0');
     }
-    if(pushEnd){
-        hexString += '00' 
+    if (pushEnd) {
+        hexString += '00'
     }
     return hexString.toUpperCase(); // 转为大写字母形式
 }
@@ -162,17 +162,18 @@ function bigHexToText(hexStr) {
     // 将十六进制字符串转为字节数组
     const bytes = [];
     for (let i = 0; i < hexStr.length; i += 2) {
-        const byteStr = hexStr.substring(i,i+ 2);
+        const byteStr = hexStr.substring(i, i + 2);
         // 遇到00立即终止
         if (byteStr === '00') break;
-        
+
         bytes.push(parseInt(byteStr, 16));
     }
-    
+
     // 使用TextDecoder解码（自动处理中文）
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(new Uint8Array(bytes));
 }
+
 /**
  * 延迟执行
  * @param {number} ms - 延迟时间，单位毫秒
@@ -206,9 +207,9 @@ function isEmpty(value) {
  * @param {*} code 
  * @returns 
  */
-function getValueByCode(variables,code) {
-    return  variables?.find(variable =>  variable.code == code)?.value
+function getValueByCode(variables, code) {
+    return variables?.find(variable => variable.code == code)?.value
 }
 
 
-export { compareVersion,num2u8,ismain,fixWildcards,replaceVariables, sleep,isEmpty,getValueByCode,fixCodePrefix,getStatusBycCdePrefix,bigHexToText,textToBigHex }
+export { compareVersion, num2u8, ismain, fixWildcards, replaceVariables, sleep, isEmpty, getValueByCode, codePrefixType,fixCodePrefix, getStatusBycCdePrefix, bigHexToText, textToBigHex }

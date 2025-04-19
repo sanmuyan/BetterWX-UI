@@ -38,7 +38,7 @@ import Loading from "@/components/loading.vue"
 import * as bridge from "@/utils/bridge.js"
 import { read, save, clearAll } from "@/utils/store.js"
 import { USE_SAVE_BASE_RULE } from '@/config/app_config.js'
-import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, textToBigHex, bigHexToText } from "@/utils/utils.js"
+import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, codePrefixType,textToBigHex, bigHexToText } from "@/utils/utils.js"
 
 const props = defineProps({
     parseConfigRule: { type: Object, default: {}, required: true },
@@ -68,7 +68,7 @@ watch(() => props.init, async (newValue) => {
             showToast(installName.value)
         }
         if (!inited.value) {
-            console.log(props.parseConfigRule)
+            console.log("props.parseConfigRule",props.parseConfigRule)
             init()
         }
         inited.value = true
@@ -83,9 +83,8 @@ watch(() => props.init, async (newValue) => {
 async function init() {
     try {
         showLoading.value = true
-        console.log(props.parseConfigRule.variables);
+        console.log("parseConfigRule.variables",props.parseConfigRule.variables);
         version.value = getValueByCode(props.parseConfigRule.variables, "install_version")
-
         let base = false
         if (USE_SAVE_BASE_RULE) {
             //读取基址缓存
@@ -94,14 +93,8 @@ async function init() {
         if (!base?.version) {
             base = await bridge.searchBaseAddress(props.parseConfigRule)
         }
-        let all_supported = base.version
         console.log("基址配置", base)
-        base.patches.forEach(item => {
-            if (!item.supported) {
-                all_supported = false
-                showToast(`搜索补丁基址失败: ${item.name || item.code}`)
-            }
-        })
+        let all_supported = base.patches.every(item => item.supported)
         baseRule.value = base
         if (all_supported) {
             //写入基址缓存
@@ -109,6 +102,7 @@ async function init() {
                 await save(baseRule.value)
             }
         } else {
+            showToast(`部分或全部功能不支持，已禁用`)
             //清除缓存
             clearAll()
         }
@@ -183,6 +177,7 @@ async function handleEvent(payload) {
                 throw new Error(`未实现方法:${name}`)
         }
     } catch (error) {
+        //还原功能状态
         feature.status = !status
         await nextTick()
         console.log(error)
@@ -194,7 +189,7 @@ async function handleEvent(payload) {
 
 
 /**
- * @description: 获取备注
+ * @description: 从存储加载所有备注
  * @return {*}
  */
 async function getNotes() {
@@ -249,10 +244,9 @@ async function del(fileInfo) {
 }
 
 /**
- * @param feature 
+ * 输入类型的补丁
  * @param fileInfo 
- * @param status 
- * @param extFeatures 
+ * @param feature 
  */
 async function doPatchInput(fileInfo, feature) {
     //检查前置功能
@@ -283,7 +277,7 @@ async function doPatchInput(fileInfo, feature) {
             text: bigHexToText(text),
             encode: true,
             hasZero,
-            maxLen: text.length/2,
+            maxLen: text.length / 2,
             label: patch.description || patch.name || patch.code,
         })
     })
@@ -294,12 +288,12 @@ async function doPatchInput(fileInfo, feature) {
     patchesFilter.forEach(patch => {
         let find = texts.find(item => item.code == patch.code)
         if (!find) {
-            throw new Error(`未找到 ${patch.code} 的输入`) 
+            throw new Error(`未找到 ${patch.code} 的输入`)
         }
         if (find.result.length < patch.origina.length) {
-            find.result+= patch.origina.substring(find.result.length)
+            find.result += patch.origina.substring(find.result.length)
         }
-        if(patch.replace !== find.result){
+        if (patch.replace !== find.result) {
             patch.replace = find.result
             patch.status = true
             patches.push(patch)
@@ -307,10 +301,11 @@ async function doPatchInput(fileInfo, feature) {
     })
     console.log(patches);
     if (patches.length == 0) {
-        return 
+        return
     }
     return applyPatches(fileInfo, patches)
 }
+
 /**
  * @description: 执行补丁操作
  * @param code 
@@ -336,18 +331,23 @@ async function doPatch(fileInfo, feature, status, extFeatures = []) {
  */
 function filterPatchesByDependencies(fileInfo, dependencies, status) {
     let patchesFilter = []
-    fileInfo.patches.forEach(patch => {
-        const index = dependencies.findIndex(dep => fixCodePrefix(dep) === patch.code)
-        if (index !== -1) {
-            let newStatus = getStatusBycCdePrefix(dependencies[index], status)
-            let newPatch = JSON.parse(JSON.stringify(patch))
+    dependencies.forEach(code => {
+        let fixedCode = fixCodePrefix(code)
+        let find = fileInfo.patches.find(item => item.code == fixedCode && item.supported)
+        if (!find) {
+            //如果是 - 开头，可以忽略
+            if (codePrefixType(code) !== 3) {
+                throw new Error(`未找到 ${code} 的依赖`)
+            }
+        } else {
+            let newStatus = getStatusBycCdePrefix(code, status)
+            let newPatch = JSON.parse(JSON.stringify(find))
             newPatch.status = newStatus
             patchesFilter.push(newPatch)
         }
     })
     return patchesFilter
 }
-
 
 /**
  * @description: 应用补丁
@@ -374,7 +374,7 @@ async function applyPatches(fileInfo, patches) {
             if (!patch) {
                 return feature.status;
             }
-            return patch.patched === needStatus;
+            return !needStatus || (patch.patched === needStatus);
         });
     })
     console.log("修补后的fileinfo", fileInfo);
@@ -424,7 +424,7 @@ async function makeCoexist(feature) {
 
 /**
  * @description: 获取输入值
- * @return {Promise<string>} 用户输入的值
+ * @return {Promise<Array<String>>} 用户输入的值
  */
 function getInputValue(texts, title) {
     title = title || "请输入"
@@ -449,11 +449,18 @@ function getInputValue(texts, title) {
     })
 }
 
+/**
+ * @description: 取消输入
+ * @return {*}
+ */
 function inputCancle() {
     inputDialog.value.show = false
 }
 
-
+/**
+ * @description: 确认输入
+ * @return {*}  
+ */
 function inputConfirm() {
     for (let index = 0; index < inputDialog.value.texts.length; index++) {
         const item = inputDialog.value.texts[index];
@@ -477,7 +484,11 @@ function inputConfirm() {
     inputDialog.value.show = false
 }
 
-
+/**
+ * @description: 获取备注
+ * @param {*} computed
+ * @return {*}
+ */
 const getNote = computed(() => (num) => {
     let note = notes.value.find(item => item.num == num)?.note || ""
     return note

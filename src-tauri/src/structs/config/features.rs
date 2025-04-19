@@ -2,7 +2,7 @@ use crate::structs::config::patches::Patches;
 use crate::structs::config::variables::Variables;
 use crate::structs::config::GetVersion;
 use crate::structs::config::{
-    get_item_by_variables_install_version, get_num_and_ismain, substitute_variables,fix_code_prefix,get_status_by_code_prefix
+    get_item_by_variables_install_version, get_num_and_ismain, substitute_variables,fix_code_prefix,get_status_by_code_prefix,code_prefix_type
 };
 
 use std::collections::HashSet;
@@ -201,8 +201,8 @@ impl Feature {
                 if let Dependencies::VecString(deps) = &feature.dependencies {
                     // 校验其依赖关系，中是否存在 对应的 patch, 并将其 supported 字段设置为 true
                     feature.supported = deps.iter().all(|code| {
-                        //不需要依赖补丁，则返回真
-                        if code.is_empty() {
+                        //不需要依赖补丁，或前缀为 - ，，则返回真
+                        if code.is_empty() || (code_prefix_type(code) == 3) {
                             return true;
                         }
                         // 在 patches 查找是否可用存在状态，修改 supported 状态
@@ -213,7 +213,7 @@ impl Feature {
                     });
                     // 校验其依赖关系，中是否存在 对应的 patch, 并将其 status 字段设置为 true
                     feature.status = deps.iter().all(|code| {
-                        if code.is_empty() {
+                        if code.is_empty() || (code_prefix_type(code) == 3){
                             return true;
                         }
                         let fixed_code = fix_code_prefix(code);
@@ -221,7 +221,8 @@ impl Feature {
                         match patch {
                             Some(p) => {
                                 let need_status = get_status_by_code_prefix(code, true);
-                                p.patched == need_status
+                                //前缀为 - ，可以不需要依赖补丁，则返回真
+                                !need_status || p.patched == need_status
                             },
                             None => false
                         }

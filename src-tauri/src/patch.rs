@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 /**
  * 应用补丁数据
- * @param patches 包含所有补丁信息的不可变引用
+ * @param patches 包含所有补丁信息的可变引用
  * @return 成功返回Ok(()), 失败返回错误信息
  */
 pub fn apply_patch(patches: &mut Patches) -> Result<()> {
@@ -35,11 +35,13 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
             return Err(anyhow!("读取文件失败:{}", &path));
         }
         // 设置 应用补丁的数据，是还原还是打补丁
-        let patch_bytes = if patch.status {
-            hex_decode_to_vec(&patch.replace)?
+        let patch_str = if patch.status {
+            &patch.replace
         } else {
-            hex_decode_to_vec(&patch.pattern)?
+            &patch.pattern
         };
+        let patch_bytes = hex_decode_to_vec(patch_str)?;
+        println!("应用补丁:{} status:{} patch_str:{}", patch.code,patch.status,patch_str);
         for address in patch.addresses.iter() {
             // 检查是否超出文件长度
             if address.end > file_data.len() || patch_bytes.len() != address.len {
@@ -109,7 +111,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
                 //修复通配符 . 返回的前台
                 patch.replace = replace_wildcards(&patch.replace, &patch.origina)?;
                 patch.pattern = replace_wildcards(&patch.pattern, &patch.origina)?;
-                patch.patched = &patch.pattern != &patch.origina;
+                patch.patched = &patch.pattern != &patch.pattern;
                 patch.status = patch.patched;
             }
             println!(
@@ -125,7 +127,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
                 let hex_str = hex_string_upper(slice);
                 patched = patched
                     && match hex_str {
-                        _ if hex_str != patch.origina => true,
+                        _ if hex_str != patch.pattern => true,
                         _ => false,
                     };
             }
@@ -142,12 +144,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
  * @param data 要搜索的十六进制字符串
  * @param reg_text 要匹配的特征码
  *
- * @return 返回一个元组，包含：
- *   - 是否找到匹配项
- *   - 匹配项的起始位置
- *   - 匹配项的结束位置
- *   - 匹配项的长度
- *   - 匹配项的原始字符串
+ * @return 返回一个元组
  */
 fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, String, Vec<Address>)> {
     let reg =
