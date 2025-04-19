@@ -51,7 +51,7 @@ const inited = ref(false)
 const baseRule = ref({})
 const filesInfo = ref([])
 const showLoading = ref(false)
-const version = ref("")
+const version = ref(false)
 const initError = ref("")
 const notes = ref([])
 const inputDialog = ref({})
@@ -64,16 +64,18 @@ watch(() => props.init, async (newValue) => {
             showToast(initError.value)
             return
         }
-        if (!isValid.value) {
+        if (!props.parseConfigRule.installed) {
+            showToast(installName.value)
+            return
+        }
+        if (!inited.value) {
+            init()
+            inited.value = true
+        }
+        if(!props.parseConfigRule.supported){
             showToast(installName.value)
         }
-        if (!inited.value && props.parseConfigRule.installed) {
-            console.log("props.parseConfigRule",props.parseConfigRule)
-            init()
-        }
-        inited.value = true
     }
-
 })
 
 
@@ -83,8 +85,8 @@ watch(() => props.init, async (newValue) => {
 async function init() {
     try {
         showLoading.value = true
-        console.log("parseConfigRule.variables",props.parseConfigRule.variables);
-        version.value = getValueByCode(props.parseConfigRule.variables, "install_version")
+        console.log("props.parseConfigRule",props.parseConfigRule)
+        version.value = version.value || getValueByCode(props.parseConfigRule.variables, "install_version")
         let base = false
         if (USE_SAVE_BASE_RULE) {
             //读取基址缓存
