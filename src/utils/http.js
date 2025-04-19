@@ -14,7 +14,6 @@ async function http(url, options = {}) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
     url = url.startsWith("http")? url : base_url + (url.startsWith("/") ? url.slice(1) :url)
-    console.log("网络请求url",url);
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,

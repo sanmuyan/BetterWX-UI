@@ -58,6 +58,7 @@ impl Patches {
     /**
      * @description: 在搜索基址后，对 featrues 状态进行更新
      */
+    #[allow(dead_code)]
     pub fn filter_patches_by_feature_detail(
         &mut self,
         feature_detail: &FeatureDetail,
