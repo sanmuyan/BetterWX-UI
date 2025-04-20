@@ -18,9 +18,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 incremental = true # Compile your binary in smaller steps.
 
 [profile.release]
-opt-level = "z" # Prioritizes small binary size. Use `3` if you prefer speed.
-panic = "abort" # Higher performance by disabling panic handlers.
-strip = true # Ensures debug symbols are removed.
+panic = "abort" # Strip expensive panic clean-up logic
+codegen-units = 1 # Compile crates one after another so the compiler can optimize better
+lto = true # Enables link to optimizations
+opt-level = "s" # Optimize for binary size
+strip = true # Remove debug symbols
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

@@ -1,18 +1,18 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import path from 'path'; 
+import path from 'path';
 const host = process.env.TAURI_DEV_HOST;
 import Components from 'unplugin-vue-components/vite';
-import {PrimeVueResolver} from '@primevue/auto-import-resolver';
+import { PrimeVueResolver } from '@primevue/auto-import-resolver';
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
-  plugins: [vue() ,
-    Components({
-      resolvers: [
-        PrimeVueResolver()
-      ]
-    })
+  plugins: [vue(),
+  Components({
+    resolvers: [
+      PrimeVueResolver()
+    ]
+  }),
   ],
   resolve: {
     alias: {
@@ -31,10 +31,10 @@ export default defineConfig(async () => ({
     host: host || false,
     hmr: host
       ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
+        protocol: "ws",
+        host,
+        port: 1421,
+      }
       : undefined,
     watch: {
       // 3. tell vite to ignore watching `src-tauri`
