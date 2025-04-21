@@ -1,5 +1,5 @@
 // TEST_MODE
-const TEST_MODE = import.meta.env.DEV && false
+const TEST_MODE = import.meta.env.DEV
 // 网络请求的地址
 const BASE_URL = "https://gitee.com/afaa1991/BetterWx-UI/raw/master"
 // 网络请求的地址 PRO

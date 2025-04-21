@@ -38,7 +38,7 @@ import Loading from "@/components/loading.vue"
 import * as bridge from "@/utils/bridge.js"
 import { read, save, clearAll } from "@/utils/store.js"
 import { USE_SAVE_BASE_RULE } from '@/config/app_config.js'
-import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, codePrefixType,textToBigHex, bigHexToText } from "@/utils/utils.js"
+import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, codePrefixType, textToBigHex, bigHexToText } from "@/utils/utils.js"
 
 const props = defineProps({
     parseConfigRule: { type: Object, default: {}, required: true },
@@ -72,7 +72,7 @@ watch(() => props.init, async (newValue) => {
             init()
             inited.value = true
         }
-        if(!props.parseConfigRule.supported){
+        if (!props.parseConfigRule.supported) {
             showToast(installName.value)
         }
     }
@@ -85,7 +85,7 @@ watch(() => props.init, async (newValue) => {
 async function init() {
     try {
         showLoading.value = true
-        console.log("props.parseConfigRule",props.parseConfigRule)
+        console.log("props.parseConfigRule", props.parseConfigRule)
         version.value = version.value || getValueByCode(props.parseConfigRule.variables, "install_version")
         let base = false
         if (USE_SAVE_BASE_RULE) {
@@ -265,7 +265,7 @@ async function doPatchInput(fileInfo, feature) {
     let dependencies = feature.dependencies
     let patchesFilter = filterPatchesByDependencies(fileInfo, dependencies)
     if (patchesFilter.length == 0) {
-        throw new Error(`找不到 ${feature.name || feature.code} 对应的 patch`)
+        throw new Error(`找不到 ${feature.name || feature.code} 对应的补丁数据`)
     }
     let texts = []
     patchesFilter.forEach(patch => {
@@ -289,21 +289,24 @@ async function doPatchInput(fileInfo, feature) {
     let patches = []
     patchesFilter.forEach(patch => {
         let find = texts.find(item => item.code == patch.code)
+        let desc = patch.description || patch.name || patch.code
         if (!find) {
-            throw new Error(`未找到 ${patch.code} 的输入`)
+            throw new Error(`未找到 ${desc} 的输入`)
+        }
+        let notInputLen = find.hasZero ? 2 : 0
+        if (find.result.length <= notInputLen) {
+            throw new Error(`输入的 ${desc} 的不能为空`)
         }
         if (find.result.length < patch.origina.length) {
             find.result += patch.origina.substring(find.result.length)
         }
-        if (patch.replace !== find.result) {
-            patch.replace = find.result
-            patch.status = true
-            patches.push(patch)
-        }
+        patch.replace = find.result
+        patch.status = true
+        patches.push(patch)
     })
     console.log(patches);
     if (patches.length == 0) {
-        return
+        throw new Error(`应用 ${title} 的补丁数据为空`)
     }
     return applyPatches(fileInfo, patches)
 }
@@ -470,8 +473,8 @@ function inputConfirm() {
         let newText = item.text
         let textLength = newText.length
         if (item.encode) {
-            newText = textToBigHex(newText, item.hasZero,item.maxLen)
-            textLength = newText.length / 2 
+            newText = textToBigHex(newText, item.hasZero, item.maxLen)
+            textLength = newText.length / 2
         }
         //长度
         if (item.maxLen && textLength > item.maxLen) {
