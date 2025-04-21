@@ -93,6 +93,9 @@ pub fn backup_files(files: Vec<String>) -> Result<()> {
  * @description: 运行应用程序
  */
 pub fn run_app(file: &str) -> Result<()> {
+    if !is_file_exists(file){
+        return Err(anyhow!("应用程序不存在: {}",file));
+    }
     Command::new("cmd.exe")
     .creation_flags(0x08000000)
     .arg("/C")
