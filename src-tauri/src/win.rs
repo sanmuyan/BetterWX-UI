@@ -93,8 +93,13 @@ pub fn backup_files(files: Vec<String>) -> Result<()> {
  * @description: 运行应用程序
  */
 pub fn run_app(file: &str) -> Result<()> {
-    Command::new(&file)
-        .spawn()
+    Command::new("cmd.exe")
+    .creation_flags(0x08000000)
+    .arg("/C")
+    .arg("start")
+    .arg("explorer.exe")
+    .arg(file)
+    .spawn()
         .map_err(|e|  anyhow!("运行应用程序失败: {}",e))?;
     Ok(())
 }

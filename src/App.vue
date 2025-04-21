@@ -32,7 +32,7 @@ import Splash from "@/components/splash.vue"
 import PatchPanel from "@/components/patch-panel.vue"
 import ReadmePanel from "@/components/readme-panel.vue"
 import { useToast } from "primevue/usetoast"
-import { MESSAGE_LIFE } from "@/config/app_config.js"
+import { MESSAGE_LIFE,TEST_MODE } from "@/config/app_config.js"
 
 provide('showToast', showToast)
 
@@ -49,7 +49,7 @@ onMounted(async () => {
  * @description: 禁用刷新，禁止使用 F5 刷新
  */
 const disableRefresh = () => {
-  if(import.meta.env.DEV) return
+  if(TEST_MODE) return
   document.addEventListener('keydown', function (event) {
     if (
       event.key === 'F5' || 
