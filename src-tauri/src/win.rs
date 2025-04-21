@@ -73,7 +73,10 @@ pub fn filter_files_is_exists(files: &Vec<String>) -> (bool,Vec<String>) {
   */
 pub fn del_files(files: Vec<String>) -> Result<()> {
     for  file in files {
-        fs::remove_file( file).map_err(|e|  anyhow!("删除文件失败: {}",e))?;
+        if !is_file_exists(&file){
+            return Err(anyhow!("应用程序不存在: {}",file));
+        }
+        fs::remove_file( file).map_err(|_|  anyhow!("删除文件失败，文件被占用，或者以管理员模式启动"))?;
     }
     Ok(())
 }
@@ -82,9 +85,12 @@ pub fn del_files(files: Vec<String>) -> Result<()> {
   * @description: 备份一组文件
   */
 pub fn backup_files(files: Vec<String>) -> Result<()> {
-    for x in files {
-        let backup_file = format!("{}.bak", x);
-        fs::copy(&x, &backup_file).map_err(|e|  anyhow!("备份文件失败: {}",e))?;
+    for file in files {
+        if !is_file_exists(&file){
+            return Err(anyhow!("文件不存在: {}",&file));
+        }
+        let backup_file = format!("{}.bak", &file);
+        fs::copy(&file, &backup_file).map_err(|_|  anyhow!("备份文件失败，文件被占用，或者以管理员模式启动"))?;
     }
     Ok(())
 }
@@ -96,14 +102,8 @@ pub fn run_app(file: &str) -> Result<()> {
     if !is_file_exists(file){
         return Err(anyhow!("应用程序不存在: {}",file));
     }
-    Command::new("cmd.exe")
-    .creation_flags(0x08000000)
-    .arg("/C")
-    .arg("start")
-    .arg("explorer.exe")
-    .arg(file)
-    .spawn()
-        .map_err(|e|  anyhow!("运行应用程序失败: {}",e))?;
+    Command::new(&file)
+        .spawn().map_err(|e|  anyhow!("运行应用程序失败: {}",e))?;
     Ok(())
 }
 

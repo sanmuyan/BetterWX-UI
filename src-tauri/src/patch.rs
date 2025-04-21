@@ -59,7 +59,7 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
     // 保存修改后的文件
     for (path, data) in file_cache {
         println!("应用补丁保存的文件:{}", &path);
-        std::fs::write(path, data).map_err(|e| anyhow!("保存文件失败: {}", e))?;
+        std::fs::write(path, data).map_err(|_| anyhow!("保存文件失败，文件被占用，或者以管理员模式启动"))?;
     }
     Ok(())
 }
