@@ -74,7 +74,8 @@ pub fn replace_wildcards(wildcard_str: &str, origina: &str) -> Result<String> {
     }
     // 确保两个字符串长度相同
     if wildcard_str.len() != origina.len() {
-        return Err(anyhow!("替换通配符,字符长度不一致"));
+        return Ok(origina.to_string());
+        //return Err(anyhow!("替换通配符,字符长度不一致"));
     }
     // 将str2转换为字符向量以便修改
     let mut wildcard_chars: Vec<char> = wildcard_str.chars().collect();

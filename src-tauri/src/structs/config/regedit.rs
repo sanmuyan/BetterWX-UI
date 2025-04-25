@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
  * @param {*} fields 注册表字段
  * @return {*}
  */
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Regedit {
     pub path: String,
     pub fields: Variables,
@@ -24,10 +24,9 @@ impl Regedit {
         if self.path.is_empty() {
             return Err(anyhow!("缺少必要注册表字段: path"));
         }
+        println!("处理注册表: {:?}", self);
         // 去注册表获取字段内容
         get_install_variables(self)?;
-        //检查是否缺少必要字段
-        self.check_fleids("install_version")?;
         //检查是否缺少必要字段
         self.check_fleids("install_location")
     }

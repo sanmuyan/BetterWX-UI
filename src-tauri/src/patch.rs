@@ -2,7 +2,7 @@ use crate::structs::config::patches::{Address, Patches};
 use crate::structs::config::{hex_decode_to_vec, replace_wildcards};
 
 use anyhow::{anyhow, Result};
-use faster_hex::hex_string_upper;
+use faster_hex::hex_string;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -95,13 +95,17 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             patch.searched = true;
             let file_data_str = file_cache_str
                 .entry(patch.saveas.to_string())
-                .or_insert_with(|| hex_string_upper(file_data));
+                .or_insert_with(|| hex_string(file_data));
             //首次搜索原始特征码
+            if patch.pattern.is_empty() {
+                return Err(anyhow!("待匹配特征码无效:{} ", &patch.code));
+            }
             let mut search_result = hex_search(file_data_str, &patch.pattern, patch.multiple)?;
             //如果没有找到，再搜索替换特征码
             if !search_result.0 && !patch.replace.is_empty() {
                 search_result = hex_search(file_data_str, &patch.replace, patch.multiple)?
             }
+
             let (found, origina, addresses) = search_result;
             patch.supported = found;
             // 根据搜索结果修改补丁信息
@@ -124,7 +128,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             let mut patched = true;
             for address in patch.addresses.iter_mut() {
                 let slice = &file_data[address.start..address.end];
-                let hex_str = hex_string_upper(slice);
+                let hex_str = hex_string(slice);
                 patched = patched
                     && match hex_str {
                         _ if hex_str != patch.pattern => true,
@@ -148,7 +152,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
  */
 fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, String, Vec<Address>)> {
     let reg =
-        Regex::new(&reg_text.to_ascii_uppercase()).map_err(|e| anyhow!("特征码错误 {}", e))?;
+        Regex::new(&reg_text.to_ascii_lowercase()).map_err(|e| anyhow!("特征码错误 {}", e))?;
     let mut result = Vec::new();
     let mut origina = String::new();
     let captures: Vec<_> = reg.captures_iter(data).collect();
@@ -156,7 +160,7 @@ fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, Strin
     // 如果不允许多个地址，且找到多个 提前返回
     if captures.len() ==1 || (multiple && captures.len() > 1) {
         for capture in captures {
-            if let Some(matched) = capture.get(0) {
+            if let Some(matched) = capture.get(capture.len()-1) {
                 let start = matched.start() / 2;
                 let end = matched.end() / 2;
                 let len = end - start;

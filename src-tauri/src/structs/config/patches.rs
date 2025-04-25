@@ -1,12 +1,14 @@
 use crate::structs::config::features::{Dependencies, FeatureDetail, Features};
 use crate::structs::config::patterns::Patterns;
-use crate::structs::config::variables::Variables;
+use crate::structs::config::variables::{Variable, Variables};
 use crate::structs::config::{
-    get_item_by_code, ismain, replace_ellipsis, replace_wildcards, substitute_variables, GetCode,fix_code_prefix
+    fix_code_prefix, get_item_by_code, ismain, replace_ellipsis, replace_wildcards,
+    substitute_variables, GetCode,
 };
 use crate::win::is_file_exists;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use faster_hex::hex_decode;
 use serde::{Deserialize, Serialize};
 
 /**
@@ -50,6 +52,7 @@ impl Patches {
      */
     pub fn retain_patches_by_featrues(&mut self, features: &Features) -> Result<()> {
         let all_dependencies = features.extract_vec_string_dependencies();
+        //过滤掉不可用的patch，只保留可用的patch,保留作为遍历的patch
         self.0
             .retain(|patch| all_dependencies.contains(&patch.code));
         Ok(())
@@ -66,16 +69,54 @@ impl Patches {
         let all_dependencies = match &feature_detail.dependencies {
             Dependencies::VecString(items) => items,
             Dependencies::VecDependency(_) => &vec![],
-        }; 
-        let patches = self.0
+        };
+        let patches = self
+            .0
             .iter()
             .filter(|patch| {
-                all_dependencies.iter()
+                all_dependencies
+                    .iter()
                     .any(|code| fix_code_prefix(code) == patch.code)
             })
             .cloned()
             .collect();
         Ok(Patches(patches))
+    }
+
+    /**
+     * @description: 过滤所有的 asvariables 为 true 的 patch
+     */
+    pub fn filter_patches_asvariables(&mut self) -> Result<Patches> {
+        let patches = self
+            .0
+            .iter()
+            .filter(|patch| patch.asvariables && !patch.disabled)
+            .cloned()
+            .map(|mut patch| {
+                patch.supported = true; // 设置 supported 字段
+                patch
+            })
+            .collect();
+        Ok(Patches(patches))
+    }
+
+    pub fn patches_to_variables(&mut self) -> Result<Variables> {
+        let mut variables = Vec::new();
+        self.0.iter().try_for_each(|patch| {
+            if patch.origina.is_empty() {
+                return Err(anyhow!("搜索变量 {} 失败",patch.code)); 
+            }
+            let value = patch.origina.clone().replace("00","");
+            // 计算需要的缓冲区大小
+            let mut buffer = vec![0u8; value.len() / 2];
+            // 使用 faster_hex 解码
+            hex_decode(value.as_bytes(), &mut buffer)?;
+            // 将字节数组转换为 UTF-8 字符串
+            let value = String::from_utf8(buffer).map_err(|_| anyhow!("{} 解码失败",patch.code))?;
+            variables.push(Variable::new(&patch.code, &value));
+            anyhow::Ok(())
+        })?;
+        Ok(Variables { 0: variables })
     }
 
     /**
@@ -99,7 +140,7 @@ pub struct Patch {
     pub target: String, //目标文件
     pub saveas: String, //保存为文件
     #[serde(default)]
-    pub name: String,   //名称
+    pub name: String, //名称
     #[serde(default)]
     pub description: String, //描述
     #[serde(default)]
@@ -127,7 +168,8 @@ pub struct Patch {
     //应用补丁状态
     #[serde(default)]
     pub status: bool, //应用补丁状态
-
+    #[serde(default)]
+    pub asvariables: bool, //是否作为变量使用
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,14 +206,13 @@ impl Patch {
             self.supported = true;
             self.pattern = partten.pattern.to_string();
             self.replace = partten.replace.to_string();
+            self.patterns.0.clear();
         }
-        self.patterns.0.clear();
-
         //处理 变量
         self.saveas = substitute_variables(&self.saveas, variables);
         self.target = substitute_variables(&self.target, variables);
-        self.replace = substitute_variables(&self.replace, variables).to_uppercase();
-        self.pattern = substitute_variables(&self.pattern, variables).to_uppercase();
+        self.replace = substitute_variables(&self.replace, variables).to_lowercase();
+        self.pattern = substitute_variables(&self.pattern, variables).to_lowercase();
         //build file_info 时使用
         if let Some(num) = variables.get_value("num") {
             if ismain(num) {
@@ -180,9 +221,9 @@ impl Patch {
             }
             //修复省略号
             self.replace = replace_ellipsis(&self.replace, &self.pattern)?;
-            //替换通配符?为...
-            self.replace = self.replace.replace("?", ".");
-            self.pattern = self.pattern.replace("?", ".");
+            //替换通配符?为.
+            self.replace = self.replace.replace("??", "..");
+            self.pattern = self.pattern.replace("??", "..");
             //修复通配符
             if !self.origina.is_empty() {
                 self.pattern = replace_wildcards(&self.pattern, &self.origina)?;

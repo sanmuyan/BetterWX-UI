@@ -131,3 +131,14 @@ pub fn open_folder(file: &str) -> Result<()> {
         .map_err(|e|  anyhow!("打开文件夹失败: {}",e))?;
     Ok(())
 }
+
+/**
+ * 获取程序所在目录
+ */
+pub fn get_exe_dir() -> Result<String> {
+    let path = std::env::current_exe()?
+        .parent()
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "无法获取程序所在目录"))?
+        .to_path_buf();
+    Ok(path.to_string_lossy().into_owned())
+}

@@ -1,3 +1,4 @@
+use crate::patch;
 use crate::structs::config::features::Features;
 use crate::structs::config::patches::Patches;
 use crate::structs::config::regedit::Regedit;
@@ -6,7 +7,7 @@ use crate::structs::config::GetCode;
 use crate::structs::config::{ismain, str_to_hex};
 use crate::structs::files_info::{FileInfo, FilesInfo};
 //use crate::structs::config::{get_item_by_code, get_mut_item_by_code, ismain, str_to_hex};
-use crate::win::{del_files, filter_files_is_exists};
+use crate::win::{del_files, filter_files_is_exists, get_exe_dir};
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -58,7 +59,7 @@ impl Rules {
 /**
  * @description: 规则配置
  */
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Rule {
     pub code: String,    //规则代码
     pub version: String, //版本号
@@ -80,37 +81,75 @@ pub struct Rule {
 }
 
 impl Rule {
-    /**
-     * @description: 调用所有rule的process方法
-     */
     pub fn process(&mut self, features: &Features) -> Result<()> {
-        //处理注册表字段
-        if let Err(err) = self.regedit.process() {
-            //todo 取出错误文本
-            println!("未安装: {:?}", err);
-            return Ok(());
+        let backup = self.clone();
+        // 尝试从安装目录处理
+        if self.try_process_from_install_dir().is_err() {
+            // 还原并尝试从注册表处理
+            *self = backup;
+            if self.try_process_from_registry().is_err() {
+                println!("注册表读取失败: {:?}", self.code);
+                return Ok(());
+            };
         }
-        println!("rule.regedit 处理完成: {:?}", self.regedit.fields);
-        //读取注册表字段成功，表示已安装
-        self.installed = true;
-        //将当前注册表字段作为变量，用于后续处理
-        let variables = &self.regedit.fields;
-        println!("已经安装: {:?}", self.code);
-        //处理rule中的variables,使用注册表字段对其替换
+        // 处理功能并更新状态
+        self.process_features_and_update_status(features)
+    }
+
+    /**
+     * @description: 尝试从安装目录处理
+     */
+    fn try_process_from_install_dir(&mut self) -> Result<()> {
+        let dir = get_exe_dir()?;
+        println!("运行目录:{}", &dir);
+        let variables = &mut Variables {
+            0: vec![Variable::new("install_location", &dir)],
+        };
         self.variables.process(variables)?;
+        self.variables.0.extend(variables.0.clone());
+        self.patches.process(&self.variables)?;
+        self.process_patch_variables()
+    }
+
+    /**
+     * @description: 尝试从注册表处理
+     */
+    fn try_process_from_registry(&mut self) -> Result<()> {
+        self.regedit.process().map_err(|err| {
+            println!("未安装: {:?}", err);
+            err
+        })?;
+        println!("已经安装: {:?}", self.regedit.fields);
+        let variables = &self.regedit.fields;
+        self.variables.process(variables)?;
+        self.variables.0.extend(variables.0.clone());
+        self.patches.process(&self.variables)?;
+        self.process_patch_variables()
+    }
+
+    /**
+     * @description: 处理功能并更新状态
+     */
+    fn process_features_and_update_status(&mut self, features: &Features) -> Result<()> {
+        self.features
+            .process(&self.variables, &mut self.patches, Some(features))?;
+        self.patches.retain_patches_by_featrues(&self.features)?;
+        self.supported = self.patches.0.iter().all(|patch| patch.supported);
+        self.installed = true;
+        Ok(())
+    }
+
+    /**
+     * @description: 转换patches为variables
+     */
+    pub fn process_patch_variables(&mut self) -> Result<()> {
+        let patches = &mut self.patches.filter_patches_asvariables()?;
+        patch::read_patches(patches)?;
+        let variables = patches.patches_to_variables()?;
         //注册表字段作为变量混入到rule.variables
         self.variables.0.extend(variables.0.clone());
         //处理补丁
         self.patches.process(&self.variables)?;
-        //处理功能
-        self.features
-            .process(&self.variables, &mut self.patches, Some(features))?;
-        //过滤下当前版本使用的补丁
-        self.patches.retain_patches_by_featrues(&self.features)?;
-        //判断所有self.patches是否全部为 suppoted
-        let all_supported = self.patches.0.iter().all(|patch| patch.supported);
-        //初始化完成，设置支持状态
-        self.supported = all_supported;
         Ok(())
     }
 
