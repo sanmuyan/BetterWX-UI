@@ -7,15 +7,15 @@ use std::process::Command;
 use std::{fs, thread, time};
 use windows_registry::LOCAL_MACHINE;
 
-use windows::core::{BOOL, HSTRING, PWSTR};
+use windows::core::{BOOL, HSTRING, PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, RECT, WPARAM};
 use windows::Win32::System::Threading::{
-    CreateProcessW, CREATE_NEW_CONSOLE, PROCESS_INFORMATION, STARTUPINFOW,
+    CreateProcessW, DETACHED_PROCESS, PROCESS_INFORMATION, STARTUPINFOW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetSystemMetrics, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId,
-    IsWindowVisible, PostMessageW, SetWindowPos, HWND_TOP, SM_CXSCREEN, SM_CYSCREEN,
-    SWP_SHOWWINDOW, WM_KEYDOWN, WM_KEYUP,
+    IsWindowVisible, MessageBoxW, PostMessageW, SetWindowPos, HWND_TOPMOST, MB_ICONINFORMATION,
+    MB_OK, SM_CXSCREEN, SM_CYSCREEN, SWP_NOSIZE, SWP_SHOWWINDOW, WM_KEYDOWN, WM_KEYUP,
 };
 
 /**
@@ -154,36 +154,147 @@ pub fn get_exe_dir() -> Result<String> {
 }
 
 /**
+ * 显示消息框
+ * @param title 标题
+ * @param message 消息
+ * @throws anyhow::Error 显示失败
+ */
+pub fn message_box(title: &str, message: &str) -> Result<()> {
+    let title = HSTRING::from(title);
+    let message = HSTRING::from(message);
+    unsafe {
+        MessageBoxW(
+            None,
+            PCWSTR(message.as_ptr()),
+            PCWSTR(title.as_ptr()),
+            MB_OK | MB_ICONINFORMATION,
+        );
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+pub struct ProcessInfo {
+    pid: u32,
+    path: String,
+}
+
+struct WindowFinder {
+    pids: Vec<u32>,
+    hwnds: Vec<(u32, HWND)>,
+}
+
+/**
  * 批量启动App
- * @param files 文件路径
+ * @param apps 文件路径
  * @return 窗口句柄列表
  * @throws anyhow::Error 启动失败
  */
-pub fn run_apps(files: &[String]) -> Result<Vec<HWND>> {
-    let mut pids = vec![];
-    for (i, file) in files.iter().enumerate() {
-        println!("run_apps: {} {}", i, file);
-        match create_process_w(file) {
-            Ok(pid) => {
-                println!("run_apps success: {}", pid);
-                pids.push(pid);
-            }
-            Err(e) => {
-                println!("run_apps error: {}", e);
-            }
-        }
-        thread::sleep(time::Duration::from_millis(500));
+pub fn run_apps(paths: &[String], auto_login: bool, close_first: bool) -> Result<()> {
+    println!("计划启动App: {} 个", paths.len());
+    let mut all_hwnds = Vec::new();
+    if close_first {
+        let _ = close_apps(&paths);
+        thread::sleep(time::Duration::from_millis(1000));
     }
-    thread::sleep(time::Duration::from_millis(1000));
-    let hwnds = get_hwnds_by_pids(pids)?;
-    if hwnds.is_empty() {
-        return Err(anyhow!("运行App失败"));
+    let (hwnds, missing) = run_apps_and_check(&paths)?;
+    all_hwnds.extend(hwnds);
+    let _ = sort_apps(&all_hwnds);
+    if auto_login {
+        let _ = send_enter_to_apps(&all_hwnds);
     }
-    //sort_apps(&mut hwnds)?;
-    Ok(hwnds)
+    if missing.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "启动失败，有 {} 个App未启动或已登录",
+        missing.len()
+    ))
 }
 
-pub fn sort_apps(hwnds: &[HWND]) -> Result<()> {
+/**
+ * 关闭App
+ */
+pub fn close_apps(paths: &[String]) -> Result<()> {
+    for path in paths {
+        let exe_name = path.split("\\").last().unwrap_or("");
+        if exe_name.is_empty() {
+            continue;
+        }
+        if exe_name.ends_with(".exe") {
+            let _ = close_app(exe_name);
+        }
+    }
+    Ok(())
+}
+
+/**
+ * 关闭App
+ */
+pub fn close_app(exe_name: &str) -> Result<()> {
+    Command::new("cmd.exe")
+        .creation_flags(0x08000000)
+        .arg("/C")
+        .arg(format!("taskkill /F /IM {}", exe_name))
+        .spawn()
+        .map_err(|e| anyhow!("结束程序失败: {}", e))?;
+    Ok(())
+}
+
+/**
+ * 启动App并检查
+ * @param apps 文件路径
+ * @return 窗口句柄列表
+ * @throws anyhow::Error 启动失败
+ */
+pub fn run_apps_and_check(paths: &[String]) -> Result<(Vec<(u32, HWND)>, Vec<String>)> {
+    let mut process_infos = vec![];
+    let mut pids = vec![];
+    for path in paths {
+        match create_process_w(path) {
+            Ok(pinfo) => {
+                process_infos.push(ProcessInfo {
+                    pid: pinfo.dwProcessId,
+                    path: path.clone(),
+                });
+                pids.push(pinfo.dwProcessId);
+            }
+            Err(e) => {
+                println!("启动 {} 失败: {}", path, e);
+            }
+        }
+    }
+    thread::sleep(time::Duration::from_millis(2000));
+    let hwnds = get_hwnds_by_pids(pids)?;
+    let missing_apps = check_missing_processes(&process_infos, &hwnds);
+    Ok((hwnds, missing_apps))
+}
+
+/**
+ * 检查未成功创建窗口的进程
+ * @param pids 所有尝试启动的进程ID列表
+ * @param hwnds 成功获取窗口的(pid, hwnd)列表
+ */
+pub fn check_missing_processes(
+    process_infos: &[ProcessInfo],
+    hwnds: &[(u32, HWND)],
+) -> Vec<String> {
+    let found_pids: Vec<u32> = hwnds.iter().map(|(pid, _)| *pid).collect();
+    let mut apps = vec![];
+    process_infos.iter().for_each(|info| {
+        if !found_pids.contains(&info.pid) {
+            apps.push(info.path.clone());
+        }
+    });
+    apps
+}
+
+/**
+ * 按行堆叠窗口
+ * @param hwnds 窗口句柄列表
+ * @throws anyhow::Error 堆叠失败
+ */
+pub fn sort_apps(hwnds: &[(u32, HWND)]) -> Result<()> {
     if hwnds.is_empty() {
         return Err(anyhow!("窗口句柄列表为空"));
     }
@@ -192,14 +303,13 @@ pub fn sort_apps(hwnds: &[HWND]) -> Result<()> {
     }
     let total = hwnds.len() as i32;
     let (sw, sh) = get_screen_size()?;
-    let app_size = get_window_size(hwnds[0])?;
+    let app_size = get_window_size(hwnds[0].1)?;
     let (mut w, h) = app_size;
-    let mut positions = Vec::new();
     // 计算最大行列数
     let max_col_num = sw / w;
     let max_row_num = sh / h;
     if max_col_num < 1 || max_row_num < 1 {
-        return Err(anyhow!("窗口尺寸不足无法排列"));
+        return Err(anyhow!("屏幕尺寸不足,无法排列"));
     }
     // 计算起始位置
     let mut row_num = 1;
@@ -213,13 +323,20 @@ pub fn sort_apps(hwnds: &[HWND]) -> Result<()> {
     }
     //进行堆叠
     if total > row_num * max_col_num {
+        // 行最大数量
         let temp_col_num = total / row_num + total % (total / row_num);
+        // 超过屏幕部分宽度
         let diff_w = temp_col_num * w - sw;
-        w = w - diff_w / (total / row_num - 1);
+        // 对窗口叠加
+        w = w - diff_w / (temp_col_num - 1);
+        println!(
+            "temp_col_num {} diff_w {} 窗口宽度: {},高度: {}",
+            temp_col_num, diff_w, w, h
+        )
     }
     // 计算列数
     let col_num = total / row_num;
-    for (i, hwnd) in hwnds.iter().enumerate() {
+    for (i, (_, hwnd)) in hwnds.iter().enumerate() {
         // 当前行
         let index = i as i32;
         let mut row_index = index / col_num;
@@ -235,11 +352,15 @@ pub fn sort_apps(hwnds: &[HWND]) -> Result<()> {
         } else {
             col_num
         };
-        let start_x = (sw - now_col_num * w) / 2;
+        let start_x = (sw - (now_col_num - 1) * w - app_size.0) / 2;
+        let start_x = if start_x < 0 { 0 } else { start_x };
         let start_y = (sh - row_num * h) / 2;
         let x = start_x + col_index * w;
         let y = start_y + row_index * h;
-        positions.push((x, y));
+        println!(
+            "第 {} 个窗口,行: {},列: {},x: {},y: {}",
+            i, row_index, col_index, x, y
+        );
         set_window_position(*hwnd, x, y, app_size.0, app_size.1)?;
     }
     Ok(())
@@ -251,7 +372,7 @@ pub fn sort_apps(hwnds: &[HWND]) -> Result<()> {
  * @return 进程ID
  * @throws anyhow::Error 启动失败
  */
-pub fn create_process_w(command_line: &str) -> Result<u32> {
+pub fn create_process_w(command_line: &str) -> Result<PROCESS_INFORMATION> {
     let command_line = Some(PWSTR(HSTRING::from(command_line).as_ptr() as _));
     let startup_info = STARTUPINFOW::default();
     let mut process_info = PROCESS_INFORMATION::default();
@@ -262,22 +383,18 @@ pub fn create_process_w(command_line: &str) -> Result<u32> {
             None,
             None,
             false,
-            CREATE_NEW_CONSOLE,
+            DETACHED_PROCESS,
             None,
             None,
             &startup_info,
             &mut process_info,
         )
         .map_err(|e| anyhow!("启动App失败{}", e))?;
+        thread::sleep(time::Duration::from_millis(1000));
         let _ = CloseHandle(process_info.hThread);
         let _ = CloseHandle(process_info.hProcess);
     }
-    Ok(process_info.dwProcessId)
-}
-
-struct WindowFinder {
-    pids: Vec<u32>,
-    hwnds: Vec<HWND>,
+    Ok(process_info)
 }
 
 /**
@@ -286,7 +403,7 @@ struct WindowFinder {
  * @return 窗口句柄
  * @throws anyhow::Error 未找到窗口
  */
-pub fn get_hwnds_by_pids(pids: Vec<u32>) -> Result<Vec<HWND>> {
+pub fn get_hwnds_by_pids(pids: Vec<u32>) -> Result<Vec<(u32, HWND)>> {
     let mut finder = WindowFinder {
         pids,
         hwnds: Vec::new(),
@@ -295,7 +412,6 @@ pub fn get_hwnds_by_pids(pids: Vec<u32>) -> Result<Vec<HWND>> {
     unsafe {
         for _ in 0..20 {
             let _ = EnumWindows(Some(enum_windows_proc), lparam);
-            println!("hwnds: {:?}", finder.hwnds);
             if !finder.hwnds.is_empty() {
                 break;
             }
@@ -303,7 +419,7 @@ pub fn get_hwnds_by_pids(pids: Vec<u32>) -> Result<Vec<HWND>> {
         }
     };
     if finder.hwnds.is_empty() {
-        return Err(anyhow!("未找到窗口"));
+        return Err(anyhow!("启动失败，未找到窗口"));
     }
     Ok(finder.hwnds)
 }
@@ -324,10 +440,9 @@ unsafe extern "system" fn enum_windows_proc(hwnd: HWND, lparam: LPARAM) -> BOOL 
             let mut title = [0u16; 256];
             let len = GetWindowTextW(hwnd, &mut title);
             // 检查窗口尺寸（可选）
-            let mut rect = RECT::default();
-            let has_rect = GetWindowRect(hwnd, &mut rect).is_ok();
+            let has_rect = get_window_size(hwnd).is_ok();
             if len > 0 && has_rect {
-                finder.hwnds.push(hwnd);
+                finder.hwnds.push((pid, hwnd));
             }
         }
     }
@@ -371,9 +486,9 @@ pub fn get_screen_size() -> Result<(i32, i32)> {
  * @param hwnds 目标窗口句柄列表
  * @return Result<()> 操作结果
  */
-pub fn send_enter_to_apps(hwnds: &[HWND]) -> Result<()> {
-    for hwnd in hwnds {
-        send_enter(*hwnd)?;
+pub fn send_enter_to_apps(hwnds: &[(u32, HWND)]) -> Result<()> {
+    for (_, hwnd) in hwnds {
+        let _ = send_enter(*hwnd);
     }
     Ok(())
 }
@@ -385,14 +500,9 @@ pub fn send_enter_to_apps(hwnds: &[HWND]) -> Result<()> {
  */
 pub fn send_enter(hwnd: HWND) -> Result<()> {
     unsafe {
-        // 发送按键按下消息
         PostMessageW(Some(hwnd), WM_KEYDOWN, WPARAM(13), LPARAM(0))
             .map_err(|e| anyhow!("发送回车键按下消息失败: {}", e))?;
-
-        // 短暂延迟，模拟真实按键
         thread::sleep(time::Duration::from_millis(50));
-
-        // 发送按键释放消息
         PostMessageW(Some(hwnd), WM_KEYUP, WPARAM(13), LPARAM(0))
             .map_err(|e| anyhow!("发送回车键释放消息失败: {}", e))?;
     }
@@ -411,8 +521,16 @@ pub fn send_enter(hwnd: HWND) -> Result<()> {
  */
 pub fn set_window_position(hwnd: HWND, x: i32, y: i32, width: i32, height: i32) -> Result<()> {
     unsafe {
-        SetWindowPos(hwnd, Some(HWND_TOP), x, y, width, height, SWP_SHOWWINDOW)
-            .map_err(|e| anyhow!("设置窗口位置失败: {}", e))?;
+        SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            x,
+            y,
+            width,
+            height,
+            SWP_SHOWWINDOW | SWP_NOSIZE,
+        )
+        .map_err(|e| anyhow!("设置窗口位置失败: {}", e))?;
     }
     Ok(())
 }
