@@ -64,6 +64,10 @@
   padding-top: 8px;
 }
 
+.p-t-0 {
+  padding-top: 0px !important;
+}
+
 .p-b {
   padding-bottom: 8px;
 }
@@ -72,6 +76,7 @@
   padding-top: 8px;
   padding-bottom: 8px;
 }
+
 .p-x {
   padding-left: 8px;
   padding-right: 8px;
@@ -82,6 +87,12 @@
   border-color: color-mix(in srgb, var(--p-surface-200) calc(100%* var(--tw-border-opacity, 1)), transparent);
 }
 
+.border-t {
+  border-top: solid 1px;
+  border-color: color-mix(in srgb, var(--p-surface-200) calc(100%* var(--tw-border-opacity, 1)), transparent);
+}
+
+
 .full-screen  {
   position: fixed;
   width: 100%;
@@ -91,7 +102,6 @@
   right: 0px;
   margin: 0 !important;
   padding: 0 !important;
-  border: 0 !important;
 }
 
 .float-bottom  {
@@ -102,12 +112,11 @@
   right: 0px;
   margin: 0 !important;
   padding: 0 !important;
-  border: 0 !important;
 }
+
 .not-select{
   user-select: none;
 }
-
 
 .container {
   overflow: hidden; 

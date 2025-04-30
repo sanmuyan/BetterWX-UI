@@ -74,6 +74,12 @@ function getSaveKey(data) {
     if (data.hasOwnProperty("content")) {
         // baseRUle
         return getReadmeSaveKey(data)
+    }  else if (data.hasOwnProperty("tabIndex")) {
+        // baseRUle
+        return getTabIndexSaveKey(data)
+    } else if (data.hasOwnProperty("selected")) {
+        // baseRUle
+        return getSelectedSaveKey(data)
     } else if (data.hasOwnProperty("notes")) {
         // baseRUle
         return getNotesSaveKey(data)
@@ -132,4 +138,25 @@ function getNotesSaveKey(data) {
     let key = `${data.code}_notes`
     return { key, version: null, cleanable: false }
 }
+
+/**
+ * @description: 获取 Selected 缓存的key和version
+ * @param {*} data
+ * @return {*}
+ */
+function getSelectedSaveKey(data) {
+    let key = `${data.code}_selected`
+    return { key, version: null, cleanable: false }
+}
+
+/**
+ * @description: 获取 TabINdex 缓存的key和version
+ * @param {*} data
+ * @return {*}
+ */
+function getTabIndexSaveKey(data) {
+    let key = `tab_index`
+    return { key, version: null, cleanable: false }
+}
+
 export { read, save, clearAll }

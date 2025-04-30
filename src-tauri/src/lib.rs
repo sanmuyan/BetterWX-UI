@@ -9,6 +9,7 @@ use crate::structs::config::patches::Patches;
 use crate::structs::config::rules::Rule;
 use crate::structs::config::Config;
 use crate::structs::files_info::{FileInfo, FilesInfo};
+use tauri::Manager;
 
 use anyhow::Result;
 
@@ -110,8 +111,39 @@ fn build_file_info_by_num(rule: Rule, num: i32) -> Result<FileInfo, MyError> {
     Ok(rule.build_file_info_by_num(num)?)
 }
 
+/*
+* @description: build_feature_file_info
+*/
+#[tauri::command(async)]
+fn build_feature_file_info(rule: Rule) -> Result<FileInfo, MyError> {
+    Ok(rule.build_feature_file_info()?)
+}
+
+/*
+* @description: 运行所有选中程序
+*/
+#[tauri::command(async)]
+fn run_apps(files: Vec<String>, login: bool, close: bool) -> Result<(), MyError> {
+    Ok(win::run_apps(&files, login, close)?)
+}
+
+/*
+* @description: 关闭所有选中程序
+*/
+#[tauri::command(async)]
+fn close_apps(files: Vec<String>) -> Result<(), MyError> {
+    Ok(win::close_apps(&files)?)
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            let _ = app
+                .get_webview_window("main")
+                .expect("no main window")
+                .set_focus();
+        }))
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
@@ -122,7 +154,7 @@ pub fn run() {
             parse_config,
             search_base_address,
             refresh_files_info,
-            apply_patch,
+            apply_patch, 
             build_file_info_by_num,
             is_files_exists,
             del_files,
@@ -130,6 +162,10 @@ pub fn run() {
             open_url,
             run_app,
             open_folder,
-        ]).run(tauri::generate_context!())
+            run_apps,
+            close_apps,
+            build_feature_file_info
+        ])
+        .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

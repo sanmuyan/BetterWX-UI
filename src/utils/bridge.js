@@ -76,8 +76,6 @@ async function refreshFilesInfo(rule) {
     return filesInfo
 }
 
-
-
 /**
  * @description: 打补丁
  * @param {*} patches 
@@ -94,7 +92,37 @@ async function applyPatch(patches) {
  * @returns 
  */
 async function buildFileInfoByNum(rule, num) {
-    return await invoke('build_file_info_by_num', { rule, num })
+    let fileInfo = await invoke('build_file_info_by_num', { rule, num })
+    fileInfo.features = fileInfo.features.sort((a, b) => a.index - b.index)
+    return fileInfo
+}
+
+/**
+ * @description: 根据规则和序号构建功能信息
+ * @param {*} rule 
+ * @param {*} num 
+ * @returns 
+ */
+async function buildFeatureFileInfo(rule) {
+    let fileInfo =  await invoke('build_feature_file_info', {rule})
+    fileInfo.features = fileInfo.features.sort((a, b) => a.index - b.index)
+    return fileInfo
+}
+
+/**
+ * @description: 运行所有选中程序
+ * @returns 
+ */
+async function runApps(files, login, close) {
+    return await invoke('run_apps', { files, login, close })
+}
+
+/**
+ * @description: 关闭所有选中程序
+ * @returns 
+ */
+async function closeApps(files) {
+    return await invoke('close_apps', { files })
 }
 
 export {
@@ -104,9 +132,12 @@ export {
     searchBaseAddress,
     refreshFilesInfo,
     buildFileInfoByNum,
+    buildFeatureFileInfo,
     applyPatch,
     delFiles,
     runApp,
     openUrl,
-    openFolder
+    openFolder,
+    runApps,
+    closeApps
 }

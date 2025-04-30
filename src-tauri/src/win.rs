@@ -153,22 +153,22 @@ pub fn get_exe_dir() -> Result<String> {
     Ok(path.to_string_lossy().into_owned())
 }
 
-
 /**
  * 显示消息框
  * @param title 标题
  * @param message 消息
  * @throws anyhow::Error 显示失败
  */
+#[allow(dead_code)]
 pub fn message_box(title: &str, message: &str) -> Result<()> {
     let title = HSTRING::from(title);
-    let message = HSTRING::from(message); 
+    let message = HSTRING::from(message);
     unsafe {
         MessageBoxW(
             None,
             PCWSTR(message.as_ptr()),
             PCWSTR(title.as_ptr()),
-            MB_OK | MB_ICONINFORMATION
+            MB_OK | MB_ICONINFORMATION,
         );
     }
     Ok(())
@@ -191,15 +191,15 @@ struct WindowFinder {
  * @return 窗口句柄列表
  * @throws anyhow::Error 启动失败
  */
-pub fn run_apps(paths: &[String],auto_login:bool,close_first:bool) -> Result<()> {
+pub fn run_apps(paths: &[String], auto_login: bool, close_first: bool) -> Result<()> {
     println!("计划启动App: {} 个", paths.len());
     let mut all_hwnds = Vec::new();
     if paths.is_empty() {
-        return Err(anyhow!("启动失败，没有指定App")); 
+        return Err(anyhow!("启动失败，没有指定App"));
     }
     for path in paths {
         if path.is_empty() || !is_file_exists(&path) {
-            return Err(anyhow!("启动失败，App路径不存在：{}",&path)); 
+            return Err(anyhow!("启动失败，App路径不存在：{}", &path));
         }
     }
     if close_first {
@@ -210,7 +210,7 @@ pub fn run_apps(paths: &[String],auto_login:bool,close_first:bool) -> Result<()>
     all_hwnds.extend(hwnds);
     let _ = sort_apps(&all_hwnds);
     if auto_login {
-        let _ = send_enter_to_apps(&all_hwnds); 
+        let _ = send_enter_to_apps(&all_hwnds);
     }
     if missing.is_empty() {
         return Ok(());
@@ -361,15 +361,15 @@ pub fn sort_apps(hwnds: &[(u32, HWND)]) -> Result<()> {
         } else {
             col_num
         };
-        let start_x = (sw - (now_col_num-1) * w - app_size.0) / 2;
+        let start_x = (sw - (now_col_num - 1) * w - app_size.0) / 2;
         let start_x = if start_x < 0 { 0 } else { start_x };
         let start_y = (sh - row_num * h) / 2;
         let x = start_x + col_index * w;
         let y = start_y + row_index * h;
-        println!(
-            "第 {} 个窗口,行: {},列: {},x: {},y: {}",
-            i, row_index, col_index, x, y
-        );
+        // println!(
+        //     "第 {} 个窗口,行: {},列: {},x: {},y: {}",
+        //     i, row_index, col_index, x, y
+        // );
         set_window_position(*hwnd, x, y, app_size.0, app_size.1)?;
     }
     Ok(())

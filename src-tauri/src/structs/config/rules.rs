@@ -4,13 +4,15 @@ use crate::structs::config::patches::Patches;
 use crate::structs::config::regedit::Regedit;
 use crate::structs::config::variables::{Variable, Variables};
 use crate::structs::config::GetCode;
-use crate::structs::config::{ismain, str_to_hex};
+use crate::structs::config::{get_index_name, get_index_num, ismain, str_to_hex};
 use crate::structs::files_info::{FileInfo, FilesInfo};
 //use crate::structs::config::{get_item_by_code, get_mut_item_by_code, ismain, str_to_hex};
 use crate::win::{del_files, filter_files_is_exists, get_exe_dir};
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+
+use super::ishead;
 
 /**
  * @description: 对vec Rule 的包装，用于添加方法
@@ -200,7 +202,16 @@ impl Rule {
         }
         Ok(FilesInfo::new(files_info))
     }
-
+    /**
+     * @description: 构建所有可能文件信息列表
+     * @return {*} 返回存在的文件信息列表
+     */
+    pub fn build_feature_file_info(&self) -> Result<FileInfo> {
+        self.check_status_available()?;
+        //构建功能区
+        let file_info = self.build_file_info_by_num(-2)?;
+        Ok(file_info)
+    }
     /**
      * @description: 构建指定文件信息
      */
@@ -210,11 +221,7 @@ impl Rule {
         //克隆一份rule，用于后续处理
         let variables = &mut rule.variables.clone();
         //如果index < 0, 则表示主程序，否则表示共存
-        let num = if index < 0 {
-            "z".to_string()
-        } else {
-            index.to_string()
-        };
+        let num = get_index_num(index);
         //将num 转为 u8 数组
         let num_u8 = str_to_hex(&num);
         //将num 和 num_u8 作为变量，用于后续处理
@@ -222,22 +229,23 @@ impl Rule {
         let variable_num_u8 = Variable::new("num_u8", &num_u8);
         variables.0.push(variable_num);
         variables.0.push(variable_num_u8);
-        let ismain = ismain(&num);
+        let is_main = ismain(&num);
+        let is_head = ishead(&num);
         //设置名称
-        let name = if ismain {
-            "主程序".to_string()
-        } else {
-            format!("共存-{num}")
-        };
+        let name = get_index_name(index);
         //处理变量中的 num 和 num_u8
-        let mut patches = rule.patches.clone();
+        let mut patches: Patches = if is_head {
+            Patches { 0: vec![] }
+        } else {
+            rule.patches.clone()
+        };
         patches.process(&variables)?;
         let mut features = rule.features.clone();
         features.process(&variables, &mut patches, None)?;
         //获取所有使用的文件
         let usedfiles = patches.get_used_files();
         Ok(FileInfo::new(
-            index, num, ismain, name, patches, features, usedfiles,
+            index, num, is_head, is_main, name, patches, features, usedfiles,
         ))
     }
 }

@@ -87,9 +87,7 @@ pub fn replace_wildcards(wildcard_str: &str, origina: &str) -> Result<String> {
         }
     }
     // 将字符向量转换回字符串
-    Ok(wildcard_chars
-        .into_iter()
-        .collect::<String>())
+    Ok(wildcard_chars.into_iter().collect::<String>())
 }
 
 /**
@@ -112,24 +110,58 @@ fn replace_ellipsis(ellipsis_str: &str, origina: &str) -> Result<String> {
 }
 
 /**
- * @description: 判断是否时主程序
+ * @description: 判断是否是主程序
  */
 fn ismain(num: &str) -> bool {
-    num == "Z" || num == "z"
+    num == "Z" || num == "z" || num == "-1"
+}
+
+/**
+ * @description: 判断是否是功能区
+ */
+fn ishead(num: &str) -> bool {
+    num == "Y" || num == "y" || num == "-2"
+}
+
+/**
+ * @description: get_index_num
+ */
+fn get_index_num(num: i32) -> String {
+    if num == -2 {
+        return "Y".to_string();
+    }
+    if num == -1 {
+        return "Z".to_string();
+    }
+    return num.to_string();
+}
+
+/**
+ * @description: get_index_name
+ */
+fn get_index_name(num: i32) -> String {
+    if num == -2 {
+        return "功能区".to_string();
+    }
+    if num == -1 {
+        return "主程序".to_string();
+    }
+    return format!("共存-{num}");
 }
 
 /**
  * @description: 从变量数组中获取 num 和 ismain
  */
-fn get_num_and_ismain(variables: &Variables) -> (String, bool,bool) {
-     // 检查是否包含 ${num} 变量
-   let num = if let Some(num) = variables.get_value("num") {
-      num
-  } else {
-      ""
-  };
-  let is_main = ismain(num);
-  return (num.to_string(),num != "", is_main);
+fn get_num_and_ismain(variables: &Variables) -> (String, bool, bool, bool) {
+    // 检查是否包含 ${num} 变量
+    let num = if let Some(num) = variables.get_value("num") {
+        num
+    } else {
+        ""
+    };
+    let is_main = ismain(num);
+    let is_head = ishead(num);
+    return (num.to_string(), num != "", is_main, is_head);
 }
 
 /**
@@ -139,12 +171,12 @@ fn get_num_and_ismain(variables: &Variables) -> (String, bool,bool) {
  * @return 替换后的字符串
  */
 fn substitute_variables(value: &str, variables: &Variables) -> String {
-    let (_,_, is_main) = get_num_and_ismain(variables);
+    let (_, _, is_main, _) = get_num_and_ismain(variables);
     let mut result = value.to_string();
     while let Some(start) = result.find("${") {
         if let Some(end) = result[start..].find('}') {
             let full_range = start..start + end + 1;
-            let  var_name = &result[start + 2..start + end].to_lowercase();
+            let var_name = &result[start + 2..start + end].to_lowercase();
             if let Some(var) = variables.get_value(var_name) {
                 //如果是主程序，且替换字符包含 num || num_u8
                 if is_main && (var_name == "num" || var_name == "num_u8") {
@@ -202,7 +234,6 @@ pub fn get_status_by_code_prefix(code: &str, status: bool) -> bool {
     }
 }
 
-
 /**
  * @description: 比较两个版本号的大小
  * @param v1 第一个版本号
@@ -243,7 +274,6 @@ pub fn compare_versions(v1: &str, v2: &str) -> i32 {
 //     }
 //     Err(anyhow!("未找到匹配的项:{}", code))
 // }
-
 
 /**
  * @description: 通过 code 获取 item 的不可变引用
@@ -301,17 +331,55 @@ trait GetCode {
  */
 const DEFAULT_FEATURE: &str = r#"[
     {
+      "code": "select",
+      "method": "select",
+      "description": "选中",
+      "inmain": true,
+      "incoexist": true,
+      "index": 30,
+      "style": "checkbox",
+      "supported": true
+    },
+     {
+      "code": "select_all",
+      "method": "select_all",
+      "description": "全选",
+      "inhead": true,
+      "index": 31,
+      "style": "checkbox",
+      "supported": true
+    },
+     {
+      "code": "open_all",
+      "name": "一键启动",
+      "method": "",
+      "description": "运行所有选中的软件",
+      "inhead": true,
+      "index": 32,
+      "style": "button",
+      "supported": true
+    },
+     {
+      "code": "close_all",
+      "name": "一键关闭",
+      "method": "",
+      "description": "终止所有选中的软件",
+      "severity":"danger",
+      "inhead": true,
+      "index": 33,
+      "style": "button",
+      "supported": true
+    },
+    {
       "code": "revoke",
-      "name": "撤回",
+      "name": "防撤",
       "method": "patch",
       "description": "调整防撤回状态",
       "inmain": true,
       "incoexist": true,
-      "index": 0,
+      "index": 40,
       "style": "switch",
-      "disabled": false,
       "supported": true,
-      "target": "",
       "dependencies": [
         "revoke"
       ]
@@ -322,71 +390,51 @@ const DEFAULT_FEATURE: &str = r#"[
       "method": "patch",
       "description": "调整多开状态",
       "inmain": true,
-      "incoexist": false,
-      "index": 30,
+      "index": 50,
       "style": "switch",
-      "disabled": false,
       "supported": true,
-      "target": "",
       "dependencies": [
         "mutex"
       ]
     },
     {
       "code": "clear",
-      "name": "清缓",
+      "name": "清理缓存",
       "method": "",
       "description": "清除软件缓存",
-      "inmain": true,
-      "incoexist": false,
+      "inhead": true,
       "index": 100,
       "style": "button",
-      "disabled": false,
-      "supported": true,
-      "target": "",
-      "dependencies": []
+      "supported": true
     },
     {
       "code": "refresh",
-      "name": "刷新",
-      "method": "",
+      "name": "刷新状态",
       "description": "重新读取所有文件状态",
-      "inmain": true,
-      "incoexist": false,
+      "inhead": true,
       "index": 110,
       "style": "button",
-      "disabled": false,
-      "supported": true,
-      "target": "",
-      "dependencies": []
+      "supported": true
     },
     {
       "code": "floder",
-      "name": "目录",
-      "method": "",
+      "name": "打开目录",
       "description": "打开文件所在目录",
       "inmain": true,
-      "incoexist": false,
       "index": 120,
       "style": "button",
-      "disabled": false,
       "supported": true,
-      "target": "${install_location}",
-      "dependencies": []
+      "target": "${install_location}"
     },
     {
       "code": "note",
       "name": "备注",
-      "method": "",
-      "description": "",
+      "description": "添加备注",
       "inmain": true,
       "incoexist": true,
       "index": 130,
       "style": "button",
-      "disabled": false,
-      "supported": true,
-      "target": "",
-      "dependencies": []
+      "supported": true
     },
     {
       "code": "open",
@@ -397,24 +445,18 @@ const DEFAULT_FEATURE: &str = r#"[
       "incoexist": true,
       "index": 140,
       "style": "button",
-      "disabled": false,
       "supported": true,
       "target": "${path_exe}",
-      "saveas": "${new_path_exe}",
-      "dependencies": []
+      "saveas": "${new_path_exe}"
     },
     {
       "code": "coexist",
       "name": "共存",
-      "method": "",
       "description": "制作共存文件",
       "inmain": true,
-      "incoexist": false,
       "index": 150,
       "style": "button",
-      "disabled": false,
       "supported": true,
-      "target": "",
       "dependencies": [
         "mutex_name",
         "config",
@@ -427,16 +469,12 @@ const DEFAULT_FEATURE: &str = r#"[
     {
       "code": "del",
       "name": "删除",
-      "method": "",
       "description": "删除共存文件",
-      "inmain": false,
       "incoexist": true,
       "index": 151,
       "style": "button",
       "disabled": false,
       "supported": true,
-      "severity":"danger",
-      "target": "",
-      "dependencies": []
+      "severity":"danger"
     }
   ]"#;

@@ -22,6 +22,7 @@ impl FilesInfo {
 pub struct FileInfo {
     pub index: i32,             // 用于前端排序
     pub num: String,            // 用于共存 num
+    pub ishead: bool,           //是否是功能区
     pub ismain: bool,           //是否是主程序
     pub name: String,           //用于显示的文件名
     pub patches: Patches,       //补丁信息集合
@@ -33,6 +34,7 @@ impl FileInfo {
     pub fn new(
         index: i32,
         num: String,
+        ishead: bool,
         ismain: bool,
         name: String,
         patches: Patches,
@@ -42,6 +44,7 @@ impl FileInfo {
         Self {
             index,
             num,
+            ishead,
             ismain,
             name,
             patches,

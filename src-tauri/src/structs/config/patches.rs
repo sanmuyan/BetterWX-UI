@@ -104,15 +104,16 @@ impl Patches {
         let mut variables = Vec::new();
         self.0.iter().try_for_each(|patch| {
             if patch.origina.is_empty() {
-                return Err(anyhow!("搜索变量 {} 失败",patch.code)); 
+                return Err(anyhow!("搜索变量 {} 失败", patch.code));
             }
-            let value = patch.origina.clone().replace("00","");
+            let value = patch.origina.clone().replace("00", "");
             // 计算需要的缓冲区大小
             let mut buffer = vec![0u8; value.len() / 2];
             // 使用 faster_hex 解码
             hex_decode(value.as_bytes(), &mut buffer)?;
             // 将字节数组转换为 UTF-8 字符串
-            let value = String::from_utf8(buffer).map_err(|_| anyhow!("{} 解码失败",patch.code))?;
+            let value =
+                String::from_utf8(buffer).map_err(|_| anyhow!("{} 解码失败", patch.code))?;
             variables.push(Variable::new(&patch.code, &value));
             anyhow::Ok(())
         })?;

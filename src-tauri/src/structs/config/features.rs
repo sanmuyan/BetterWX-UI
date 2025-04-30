@@ -2,12 +2,13 @@ use crate::structs::config::patches::Patches;
 use crate::structs::config::variables::Variables;
 use crate::structs::config::GetVersion;
 use crate::structs::config::{
-    get_item_by_variables_install_version, get_num_and_ismain, substitute_variables,fix_code_prefix,get_status_by_code_prefix,code_prefix_type
+    code_prefix_type, fix_code_prefix, get_item_by_variables_install_version, get_num_and_ismain,
+    get_status_by_code_prefix, substitute_variables,
 };
 
-use std::collections::HashSet;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 /**
  * 对vec Feature 的包装，用于添加方法
@@ -35,13 +36,16 @@ impl Features {
             .try_for_each(|feature| feature.process(variables, patches, features))?;
 
         // 获取版本信息
-        let (_, has_num, is_main) = get_num_and_ismain(variables);
+        let (_, has_num, is_main, is_head) = get_num_and_ismain(variables);
         // 过滤feature
         self.0.retain(|feature| {
             let Feature::FeatureDetail(fd) = feature else {
                 return false;
             };
             if has_num {
+                if is_head {
+                    return fd.inhead;
+                };
                 if is_main {
                     fd.inmain
                 } else {
@@ -64,12 +68,10 @@ impl Features {
         self.0
             .iter()
             .filter_map(|feature| match feature {
-                Feature::FeatureDetail(fd) => {
-                    match &fd.dependencies {
-                        Dependencies::VecString(vec_str) => Some(vec_str.clone()),
-                        _ => None,
-                    }
-                }
+                Feature::FeatureDetail(fd) => match &fd.dependencies {
+                    Dependencies::VecString(vec_str) => Some(vec_str.clone()),
+                    _ => None,
+                },
                 _ => None,
             })
             .flatten()
@@ -170,8 +172,8 @@ impl Feature {
             Feature::FeatureDetail(feature) => {
                 // 替换feature target 中的变量
                 //如果不是主程序，需要替换 target 字段为 saveas 字段
-                let (_, han_num, is_main) = get_num_and_ismain(variables);
-                if han_num && !is_main && !feature.saveas.is_empty() {
+                let (_, han_num, is_main, is_head) = get_num_and_ismain(variables);
+                if han_num && !is_main && !is_head && !feature.saveas.is_empty() {
                     feature.target = feature.saveas.clone();
                 }
                 feature.saveas = substitute_variables(&feature.saveas, variables);
@@ -206,14 +208,15 @@ impl Feature {
                             return true;
                         }
                         // 在 patches 查找是否可用存在状态，修改 supported 状态
-                        patches
-                            .0
-                            .iter()
-                            .any(|patch| patch.code == fix_code_prefix(code) && patch.supported && !patch.disabled)
+                        patches.0.iter().any(|patch| {
+                            patch.code == fix_code_prefix(code)
+                                && patch.supported
+                                && !patch.disabled
+                        })
                     });
                     // 校验其依赖关系，中是否存在 对应的 patch, 并将其 status 字段设置为 true
                     feature.status = deps.iter().all(|code| {
-                        if code.is_empty() || (code_prefix_type(code) == 3){
+                        if code.is_empty() || (code_prefix_type(code) == 3) {
                             return true;
                         }
                         let fixed_code = fix_code_prefix(code);
@@ -223,8 +226,8 @@ impl Feature {
                                 let need_status = get_status_by_code_prefix(code, true);
                                 //前缀为 - ，可以不需要依赖补丁，则返回真
                                 !need_status || p.patched == need_status
-                            },
-                            None => false
+                            }
+                            None => false,
                         }
                     });
                 }
@@ -243,6 +246,7 @@ impl Feature {
 pub enum StyleType {
     Switch,
     Button,
+    Checkbox,
 }
 
 /**
@@ -285,11 +289,14 @@ impl Dependencies {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureDetail {
     pub code: String, // 唯一标识
+    #[serde(default)]
     pub name: String, // 名称
     #[serde(default)]
     pub method: String, // 方法，在前端调用的具体方法，为空则默认为 code
     #[serde(default)]
     pub description: String, // 描述
+    #[serde(default)]
+    pub inhead: bool, // 是否头部功能区显示
     #[serde(default)]
     pub inmain: bool, // 是否在程序上显示
     #[serde(default)]
@@ -315,10 +322,9 @@ pub struct FeatureDetail {
     #[serde(default)]
     pub status: bool, // 当前功能状态
     #[serde(default)]
-    pub tdelay: u32,   // 文本显示延迟
+    pub tdelay: u32, // 文本显示延迟
     #[serde(default)]
-    pub dependfeature: Vec<String>,//前置功能
-
+    pub dependfeature: Vec<String>, //前置功能
 }
 /**
  * @description: Dependencies 序列化默认值

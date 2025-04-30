@@ -41,7 +41,10 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
             &patch.pattern
         };
         let patch_bytes = hex_decode_to_vec(patch_str)?;
-        println!("应用补丁:{} status:{} patch_str:{}", patch.code,patch.status,patch_str);
+        println!(
+            "应用补丁:{} status:{} patch_str:{}",
+            patch.code, patch.status, patch_str
+        );
         for address in patch.addresses.iter() {
             // 检查是否超出文件长度
             if address.end > file_data.len() || patch_bytes.len() != address.len {
@@ -59,7 +62,8 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
     // 保存修改后的文件
     for (path, data) in file_cache {
         println!("应用补丁保存的文件:{}", &path);
-        std::fs::write(path, data).map_err(|_| anyhow!("保存文件失败，文件被占用，或者以管理员模式启动"))?;
+        std::fs::write(path, data)
+            .map_err(|_| anyhow!("保存文件失败，文件被占用，或者以管理员模式启动"))?;
     }
     Ok(())
 }
@@ -122,7 +126,6 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
                 "搜索结果: {} - code:{}  - patched:{} - supported:{}, addesses: {:?}",
                 found, &patch.code, patch.patched, patch.supported, patch.addresses
             );
-           
         } else {
             // 读取模式
             let mut patched = true;
@@ -158,9 +161,9 @@ fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, Strin
     let captures: Vec<_> = reg.captures_iter(data).collect();
     //添加对多个地址的支持
     // 如果不允许多个地址，且找到多个 提前返回
-    if captures.len() ==1 || (multiple && captures.len() > 1) {
+    if captures.len() == 1 || (multiple && captures.len() > 1) {
         for capture in captures {
-            if let Some(matched) = capture.get(capture.len()-1) {
+            if let Some(matched) = capture.get(capture.len() - 1) {
                 let start = matched.start() / 2;
                 let end = matched.end() / 2;
                 let len = end - start;
@@ -169,5 +172,5 @@ fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, Strin
             }
         }
     }
-    Ok((!result.is_empty(),origina,result))
+    Ok((!result.is_empty(), origina, result))
 }

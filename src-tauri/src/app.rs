@@ -37,8 +37,8 @@ pub fn search_base_address(rule: &mut Rule) -> Result<()> {
 }
 
 /**
- * @description: 搜索基址
- * @return {*} 返回修补基址后的rule
+ * @description: 刷新文件信息
+ * @return {*} 返回s
  */
 pub fn refresh_files_info(rule: &Rule) -> Result<FilesInfo> {
     let mut files_info = rule.build_files_info()?;

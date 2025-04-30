@@ -1,24 +1,33 @@
 <template>
+    <div class="m-x not-select">
+        <CoexistList :fileInfo="FeatureFileInfo" :rule="baseRule" :mainFileInfo="filesInfo?.[0]"
+            :note="getNote(FeatureFileInfo.num)" @event="handleEvent" class="border-b">
+        </CoexistList>
+    </div>
     <ScrollPanel :style="style">
         <div class="m-x not-select">
-            <Tag :value="installName" :severity="tagSeverity1" class="m-r"></Tag>
-            <Tag :value="`特征码版本: ${props.parseConfigRule.version}`" :severity="tagSeverity2"></Tag>
             <div v-if="parseConfigRule.installed">
                 <template v-for="(fileInfo) in filesInfo" :key="fileInfo.num">
-                    <CoexistList :fileInfo="fileInfo" :rule="baseRule" :note="getNote(fileInfo.num)"
-                        @event="handleEvent" class="border-b p-y">
+                    <CoexistList :fileInfo="fileInfo" :mainFileInfo="filesInfo?.[0]" :rule="baseRule"
+                        :note="getNote(fileInfo.num)" @event="handleEvent" class="border-b">
                     </CoexistList>
                 </template>
             </div>
             <Loading :show="showLoading" />
         </div>
     </ScrollPanel>
+    <div class="float-bottom border-t">
+        <div class="flex row items-center " style="height: 48px;padding: var(--p-tabs-tabpanel-padding);">
+            <Tag :value="installName" :severity="tagSeverity1" class="m-r"></Tag>
+            <Tag :value="`特征码版本: ${props.parseConfigRule.version}`" :severity="tagSeverity2"></Tag>
+        </div>
+    </div>
     <!-- input -->
     <Dialog class="not-select" v-model:visible="inputDialog.show" modal :header="inputDialog.title"
         style="width: 30rem;" :closable="false">
         <div class="flex col">
             <template v-for="(item, index) in inputDialog.texts" :key="index">
-                <div class="flex col justify-center  gap m-b">
+                <div class="flex col justify-center gap m-b">
                     <b class="text-ellipsis">{{ item.label }}</b>
                     <InputText class="w-100" type="text" v-model="item.text"></InputText>
                 </div>
@@ -43,19 +52,22 @@ import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, codePrefixType, t
 const props = defineProps({
     parseConfigRule: { type: Object, default: {}, required: true },
     style: { type: Object, required: true },
-    init: { type: Boolean, default: false },
+    init: { type: Boolean, default: false }
 })
 
 const showToast = inject('showToast')
 const inited = ref(false)
 const baseRule = ref({})
 const filesInfo = ref([])
+const FeatureFileInfo = ref({})
 const showLoading = ref(false)
 const version = ref(false)
 const initError = ref("")
 const notes = ref([])
 const inputDialog = ref({})
+
 onMounted(async () => {
+    
 })
 
 watch(() => props.init, async (newValue) => {
@@ -76,7 +88,7 @@ watch(() => props.init, async (newValue) => {
             showToast(installName.value)
         }
     }
-})
+},{immediate:true})
 
 
 /**
@@ -84,6 +96,7 @@ watch(() => props.init, async (newValue) => {
  */
 async function init() {
     try {
+        await nextTick()
         showLoading.value = true
         console.log("props.parseConfigRule", props.parseConfigRule)
         version.value = version.value || getValueByCode(props.parseConfigRule.variables, "install_version")
@@ -108,7 +121,11 @@ async function init() {
             //清除缓存
             clearAll()
         }
+        FeatureFileInfo.value = await bridge.buildFeatureFileInfo(baseRule.value)
+        console.log(FeatureFileInfo.value);
         filesInfo.value = await bridge.refreshFilesInfo(baseRule.value)
+        //加载选中状态
+        await getSelectAll()
         console.log(filesInfo.value);
         //加载备注
         await getNotes()
@@ -130,7 +147,8 @@ async function init() {
  */
 async function handleEvent(payload) {
     let { code, num, status } = payload
-    let fileInfo = filesInfo.value.find(item => item.num == num)
+    let fileInfo = num == "Y" ? FeatureFileInfo.value : filesInfo.value.find(item => item.num == num) 
+    console.log(payload,fileInfo);
     let feature = fileInfo?.features.find(item => item.code == code)
     if (showLoading.value) {
         showToast("请等待上一个操作完成")
@@ -174,6 +192,18 @@ async function handleEvent(payload) {
             case "note":
                 await setNote(fileInfo)
                 break
+            case "select":
+                await setSelectAll(status,num)
+                break
+            case "select_all":
+                await setSelectAll(status)
+                break
+            case "open_all":
+                await openAll(true)
+                break
+            case "close_all":
+                await openAll(false)
+                break
             default:
                 let name = feature.name || method
                 throw new Error(`未实现方法:${name}`)
@@ -189,6 +219,78 @@ async function handleEvent(payload) {
     }
 }
 
+/**
+ * @description: 运行全部
+ * @return {*}
+ */
+async function openAll(status) {
+    let filesInfoFilter = filesInfo.value.filter(item => item.features.find(feature => feature.code == "select" && feature.status))
+    let files = []
+    for (let fileInfo of filesInfoFilter) {
+        let feature = fileInfo.features.find(item => item.code == "open")
+        files.push(feature.target)
+    }
+    if (files.length == 0) {
+        showToast("请选择需要启动/关闭的程序")
+        return
+    }
+    if (status) {
+        await bridge.runApps(files, true, true)
+    } else {
+        await bridge.closeApps(files)
+    }
+}
+
+/**
+ * @description: 设置全选反选
+ * @return {*}
+ */
+async function setSelectAll(status,num) {
+    let selected = []
+    filesInfo.value.forEach(item => {
+        item.features.forEach(feature => {
+            if (feature.code == "select") {
+                if (num) {
+                    feature.status = num == "Y" || item.num == num ? status : feature.status 
+                }else{
+                    feature.status = status
+                }
+                if (feature.status) {
+                    selected.push(item.num)
+                }
+            }
+        })
+    })
+    let storeData = {
+        code: baseRule.value.code,
+        selected: selected
+    }
+    await save(storeData)
+}
+
+/**
+ * @description: 设置全选反选
+ * @return {*}
+ */
+ async function getSelectAll() {
+    let storeNotes = await read({
+        code: baseRule.value.code,
+        selected: []
+    })
+    let selected = storeNotes?.selected || []
+    filesInfo.value.forEach(item => {
+        item.features.forEach(feature => {
+            if (feature.code == "select") {
+                feature.status = selected.includes(item.num)
+            }
+        })
+    })
+    FeatureFileInfo.value.features.forEach(feature => {
+        if (feature.code == "select_all") {
+            feature.status = selected.length == filesInfo.value.length
+        }
+    })
+}
 
 /**
  * @description: 从存储加载所有备注
