@@ -59,8 +59,21 @@
 
 ## 🔄 批量启动多账号
 
-- [BetterWx-Starter](https://github.com/afaa1991/BetterWx-Starter)
+- 方法1.[BetterWx-Starter](https://github.com/afaa1991/BetterWx-Starter)
+
 - 基于 Rust 的实现的批量启动小玩具 支持自动排序、自动登录
+
+- 方法2.  以下内容保存到 `.bat` 文件，运行。
+
+- 修改“`D:\AppData\Tencent\Weixin`” 为你的微信安装目录。
+
+- `Weixin1.exe` 共存的exe文件名。需要启动哪个，添加哪个。
+
+```bash
+start "" "D:\AppData\Tencent\Weixin\Weixin.exe"
+start "" "D:\AppData\Tencent\Weixin\Weixin1.exe"
+timeout /t 1 /nobreak >nul
+```
 
 ## 💾 下载地址
 

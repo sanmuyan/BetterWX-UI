@@ -164,7 +164,11 @@ async function handleEvent(payload) {
         console.log(feature, num, method)
         switch (method) {
             case "refresh":
+                FeatureFileInfo.value = await bridge.buildFeatureFileInfo(baseRule.value)
+                console.log(FeatureFileInfo.value);
                 filesInfo.value = await bridge.refreshFilesInfo(baseRule.value)
+                //加载选中状态
+                await getSelectAll()
                 console.log(filesInfo.value);
                 break
             case "del":
