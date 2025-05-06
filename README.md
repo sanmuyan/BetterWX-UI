@@ -12,17 +12,13 @@
 
 ## 🔥 主要功能
 
-- ✅ 多开支持
+- ✅ 多开支持，建议使用共存方案
 - ✅ 消息防撤回
 - ✅ 多账号免扫码登录
-- ✳️ **4.0 支持消息撤回编辑**
-- ✳️ **4.0 支持消息撤回提示**
-- ✳️ **4.0 支持自定义撤回提示消息（在共存上使用）**
-
-## ✒️ 更新说明
-
-  - 🔆 修复自动更新获取注册表错误的问题。
-  - 🔆 支持绿色版，放在绿色版目录内运行。
+- ✳️ 撤回2：支持消息撤回编辑
+- ✳️ 撤回2：支持消息撤回提示
+- ✳️ 撤回2：支持自定义撤回提示消息（在共存上使用）
+- ✳️ **撤回3：感谢EEEEhex大佬的撤回方法，感谢zetaloop大佬的补丁版方案**
 
 ## 📌 支持版本
 
@@ -33,12 +29,19 @@
 - 3.9版本：支持撤回提示
 - 4.0版本：支持撤回编辑，支持撤回提示，支持自定义撤回提示消息。
 
-## 📜 项目来源
+## 📜 鸣谢
 
-基于大佬 Zetaloop 的开源项目制作的UI工具
+- 项目开源地址
+    - BetterWx-UI [https://github.com/afaa1991/BetterWx-UI](https://github.com/afaa1991/BetterWx-UI)
 
-- 原项目地址: [https://github.com/zetaloop/BetterWX](https://github.com/zetaloop/BetterWX)
-- UI工具地址: [https://github.com/afaa1991/BetterWx-UI](https://github.com/afaa1991/BetterWx-UI)
+- **zetaloop：原始项目**
+    - BetterWX [https://github.com/zetaloop/BetterWX](https://github.com/zetaloop/BetterWX)
+
+- EEEEhex
+    - RevokeHook [https://github.com/EEEEhex/RevokeHook](https://github.com/EEEEhex/RevokeHook)
+
+- huiyadanli
+    - RevokeMsgPatcher [https://github.com/huiyadanli/RevokeMsgPatcher](https://github.com/huiyadanli/RevokeMsgPatcher)
 
 ## ❓ 常见问题解决方案
 
@@ -59,7 +62,7 @@
 
 ## 🔄 批量启动多账号
 
-- 方法1.[BetterWx-Starter](https://github.com/afaa1991/BetterWx-Starter)
+- 方法1. [BetterWx-Starter](https://github.com/afaa1991/BetterWx-Starter)
 
 - 基于 Rust 的实现的批量启动小玩具 支持自动排序、自动登录
 
