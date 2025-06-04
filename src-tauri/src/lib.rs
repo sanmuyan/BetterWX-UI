@@ -102,6 +102,16 @@ fn apply_patch(patches: Patches) -> Result<Patches, MyError> {
     Ok(patches)
 }
 
+/**
+ * @description: 备份一组文件
+ */
+#[tauri::command(async)]
+fn remove_patches_backup_files(patches: Patches) -> Result<(), MyError> {
+   let files = patches.get_bak_files();    
+   println!("remove_patches_backup_files    {:?}",files);
+    Ok(win::del_files(files)?)
+}
+
 /*
 * @description: 应用补丁
 * @return {*} 返回修补基址后的rule
@@ -164,7 +174,8 @@ pub fn run() {
             open_folder,
             run_apps,
             close_apps,
-            build_feature_file_info
+            build_feature_file_info,
+            remove_patches_backup_files
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

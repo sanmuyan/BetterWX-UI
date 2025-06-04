@@ -133,6 +133,22 @@ impl Patches {
         files.dedup();
         files
     }
+
+     /**
+     * @description: //所有补丁需要使用的文件集合
+     */
+    pub fn get_bak_files(&self) -> Vec<String> {
+        let mut files: Vec<String> = self
+            .0
+            .iter()
+            .filter(|patch| patch.target.ends_with(".bak"))
+            .map(|patch| patch.target.to_string())
+            .collect();
+        files.sort_unstable();
+        files.dedup();
+        files
+    }
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -257,6 +273,8 @@ impl Patch {
         self.addresses = base_patch.addresses;
         self.origina = base_patch.origina.to_string();
         self.searched = base_patch.searched;
+        self.status = base_patch.status;
+        self.patched = base_patch.patched;
         Ok(())
     }
 

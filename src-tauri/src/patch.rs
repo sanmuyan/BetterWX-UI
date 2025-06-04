@@ -34,11 +34,6 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
         if file_data.is_empty() {
             return Err(anyhow!("读取文件失败:{}", &path));
         }
-
-        println!(
-            "应用补丁:{} status:{} ",
-            patch.code, patch.status
-        );
         for address in patch.addresses.iter() {
             // 设置 应用补丁的数据，是还原还是打补丁
             let patch_str = if patch.status {
@@ -46,6 +41,10 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
             } else {
                 &address.origina
             };
+            println!(
+                "应用补丁:{} status:{} patch_str {}",
+                patch.code, patch.status, patch_str
+            );
             let patch_bytes = hex_decode_to_vec(patch_str)?;
             // 检查是否超出文件长度
             if address.end > file_data.len() || patch_bytes.len() != address.len {
@@ -54,7 +53,7 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
                     &patch.name
                 ));
             }
-            
+
             //修补指定区域的数据
             file_data[address.start..address.end].copy_from_slice(&patch_bytes);
             //patch.patched = status;
@@ -64,8 +63,7 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
     // 保存修改后的文件
     for (path, data) in file_cache {
         println!("应用补丁保存的文件:{}", &path);
-        std::fs::write(path, data)
-            .map_err(|_| anyhow!("保存文件失败，请先关闭所有WX程序"))?;
+        std::fs::write(path, data).map_err(|_| anyhow!("保存文件失败，请先关闭所有WX程序"))?;
     }
     Ok(())
 }
@@ -85,6 +83,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
         // 搜索模式
         if patch.addresses.is_empty() {
             let path: &str = &patch.target;
+            let mut patched = false;
             let file_data = file_cache
                 .entry(patch.target.to_string())
                 .or_insert_with(|| std::fs::read(&path).unwrap_or_else(|_| Vec::new()));
@@ -106,6 +105,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             let mut search_result = hex_search(file_data_str, &patch.pattern, patch.multiple)?;
             //如果没有找到，再搜索替换特征码
             if !search_result.0 && !patch.replace.is_empty() {
+                patched = true;
                 search_result = hex_search(file_data_str, &patch.replace, patch.multiple)?
             }
 
@@ -118,8 +118,8 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
                 //修复通配符 . 返回的前台
                 patch.replace = replace_wildcards(&patch.replace, &patch.origina)?;
                 patch.pattern = replace_wildcards(&patch.pattern, &patch.origina)?;
-                patch.patched = &patch.pattern != &patch.pattern;
-                patch.status = patch.patched;
+                patch.patched = patched;
+                patch.status = patched;
             }
             println!(
                 "搜索结果: {} - code:{}  - patched:{} - supported:{}, addesses: {:?}",
@@ -128,6 +128,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
         } else {
             // 读取模式
             let path: &str = patch.get_exists_path();
+            println!("读取模式:{}", &path);
             let file_data = file_cache
                 .entry(path.to_string())
                 .or_insert_with(|| std::fs::read(&path).unwrap_or_else(|_| Vec::new()));

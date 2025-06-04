@@ -109,6 +109,11 @@ async function init() {
             base = await bridge.searchBaseAddress(props.parseConfigRule)
         }
         console.log("基址配置", base)
+        let all_notpatched = base.patches.every(item => !item.patched)
+        if (!all_notpatched) {
+            await bridge.removePatchesBackupFiles(props.parseConfigRule.patches)
+            throw new Error(`备份文件无效，请尝试重装WX`)
+        }
         let all_supported = base.patches.every(item => item.supported)
         baseRule.value = base
         if (all_supported) {
@@ -131,7 +136,7 @@ async function init() {
         await getNotes()
     } catch (error) {
         console.log(error)
-        initError.value = `出错了:${error}`
+        initError.value = `${error}`
         props.parseConfigRule.supported = false
         clearAll()
         showToast(initError.value)

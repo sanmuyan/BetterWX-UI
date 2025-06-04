@@ -62,7 +62,6 @@ async function checkUpdate() {
         setTitle(appName, showVersion)
         let info = await http(UPDATE_URL + "?r=" + Math.random())
         updateInfo.value = await dealOtherVersion(info)
-        console.log("updateInfo.valueupdateInfo.value", updateInfo.value);
         //从更新文件加载app名称
         if (!TEST_MODE && updateInfo.value.name) {
             setTitle(updateInfo.value.name || appName, appVersion)

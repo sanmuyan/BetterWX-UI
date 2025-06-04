@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core"
  * 解析配置文件
  * @param {*} path 
  */
-async function parseConfig(config) {
+export async function parseConfig(config) {
     return await invoke('parse_config', { config })
 }
 
@@ -12,7 +12,7 @@ async function parseConfig(config) {
  * 判断文件是否存在
  * @param {*} path 
  */
-async function isFileExists(path) {
+export async function isFileExists(path) {
     return await invoke('is_file_exists', { path })
 }
 
@@ -20,35 +20,35 @@ async function isFileExists(path) {
  * 判断一组文件是否存在
  * @param {*} path 
  */
-async function isFilesExists(files) {
+export async function isFilesExists(files) {
     return await invoke('is_files_exists', { files })
 }
 
 /**
  * @description: 删除一组文件
  */
-async function delFiles(files) {
+export async function delFiles(files) {
     await invoke('del_files', { files })
 }
 
 /**
  * @description: 运行应用
  */
-async function runApp(file) {
+export async function runApp(file) {
     await invoke('run_app', { file })
 }
 
 /**
  * @description: 打开网页
  */
-async function openUrl(url) {
+export async function openUrl(url) {
     await invoke('open_url', { url })
 }
 
 /**
  * @description: 打开文件夹
  */
-async function openFolder(folder) {
+export async function openFolder(folder) {
     await invoke('open_folder', { folder })
 }
 
@@ -58,7 +58,7 @@ async function openFolder(folder) {
  * @param {*} rule 
  * @returns 
  */
-async function searchBaseAddress(rule) {
+export async function searchBaseAddress(rule) {
     return await invoke('search_base_address', { rule })
 }
 
@@ -67,7 +67,7 @@ async function searchBaseAddress(rule) {
  * @param {*} rule 
  * @returns 
  */
-async function refreshFilesInfo(rule) {
+export async function refreshFilesInfo(rule) {
     let filesInfo = await invoke('refresh_files_info', { rule })
     filesInfo.sort((a, b) => a.index - b.index)
     filesInfo.forEach(fileInfo => {
@@ -81,8 +81,13 @@ async function refreshFilesInfo(rule) {
  * @param {*} patches 
  * @return {*} patches
  */
-async function applyPatch(patches) {
+export async function applyPatch(patches) {
     return await invoke('apply_patch', { patches })
+}
+
+
+export async function removePatchesBackupFiles(patches) {
+    return await invoke('remove_patches_backup_files', { patches })
 }
 
 /**
@@ -91,7 +96,7 @@ async function applyPatch(patches) {
  * @param {*} num 
  * @returns 
  */
-async function buildFileInfoByNum(rule, num) {
+export async function buildFileInfoByNum(rule, num) {
     let fileInfo = await invoke('build_file_info_by_num', { rule, num })
     fileInfo.features = fileInfo.features.sort((a, b) => a.index - b.index)
     return fileInfo
@@ -103,7 +108,7 @@ async function buildFileInfoByNum(rule, num) {
  * @param {*} num 
  * @returns 
  */
-async function buildFeatureFileInfo(rule) {
+export async function buildFeatureFileInfo(rule) {
     let fileInfo =  await invoke('build_feature_file_info', {rule})
     fileInfo.features = fileInfo.features.sort((a, b) => a.index - b.index)
     return fileInfo
@@ -113,7 +118,7 @@ async function buildFeatureFileInfo(rule) {
  * @description: 运行所有选中程序
  * @returns 
  */
-async function runApps(files, login, close) {
+export async function runApps(files, login, close) {
     return await invoke('run_apps', { files, login, close })
 }
 
@@ -121,23 +126,6 @@ async function runApps(files, login, close) {
  * @description: 关闭所有选中程序
  * @returns 
  */
-async function closeApps(files) {
+export async function closeApps(files) {
     return await invoke('close_apps', { files })
-}
-
-export {
-    isFileExists,
-    isFilesExists,
-    parseConfig,
-    searchBaseAddress,
-    refreshFilesInfo,
-    buildFileInfoByNum,
-    buildFeatureFileInfo,
-    applyPatch,
-    delFiles,
-    runApp,
-    openUrl,
-    openFolder,
-    runApps,
-    closeApps
 }

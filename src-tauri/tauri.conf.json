@@ -17,6 +17,7 @@
         "minWidth": 640,
         "height": 360,
         "minHeight": 360,
+        "visible": false,
         "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required"
       }
     ],

@@ -34,6 +34,8 @@ pub fn search_base_address(rule: &mut Rule) -> Result<()> {
     //根据 patches 修复 feature 功能状态
     rule.features
         .fix_features_by_base_patches(&rule.variables, &mut rule.patches)?;
+    
+    println!("----------------------------------------rule.patches: {:?}",file_info.patches);
     Ok(())
 }
 
