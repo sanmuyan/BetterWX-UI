@@ -8,7 +8,7 @@ import { UPDATE_BASE_URL} from "@/config/app_config.js"
  * @return {*}
  */
 async function http(url, options = {}) {
-  const { timeout = 5000, headers = {}, text = false } = options
+  const { timeout = 30000, headers = {}, text = false } = options
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)

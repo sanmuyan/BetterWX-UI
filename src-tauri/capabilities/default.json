@@ -19,10 +19,6 @@
           "url": "https://gitee.com/*"
         }
       ]
-    },
-    {
-      "identifier": "fs:allow-app-read",
-      "allow": [{ "path": "$RUNTIME/*" }]
-    }    
+    }   
   ]
 }

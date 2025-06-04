@@ -137,8 +137,11 @@ impl Patches {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Patch {
-    pub code: String,   //唯一标识
+    pub code: String, //唯一标识
+    pub path: String, //主程序路径
+    #[serde(default)]
     pub target: String, //目标文件
+    #[serde(default)]
     pub saveas: String, //保存为文件
     #[serde(default)]
     pub name: String, //名称
@@ -175,6 +178,9 @@ pub struct Patch {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Address {
+    //原始数据
+    #[serde(default)]
+    pub origina: String, //原始数据
     //基址
     #[serde(default)]
     pub start: usize, //基址起始位置
@@ -187,8 +193,8 @@ pub struct Address {
 }
 
 impl Address {
-    pub fn new(start: usize, end: usize, len: usize) -> Self {
-        Self { start, end, len }
+    pub fn new(start: usize, end: usize, len: usize,origina:String) -> Self {
+        Self { start, end, len,origina }
     }
 }
 
@@ -209,7 +215,15 @@ impl Patch {
             self.replace = partten.replace.to_string();
             self.patterns.0.clear();
         }
+        //处理 saveas target 空字段
+        if self.saveas.is_empty() {
+            self.saveas = self.path.to_string().replace("path_", "new_path_");
+        }
+        if self.target.is_empty() {
+            self.target = self.path.to_string().replace("path_", "bak_path_");
+        }
         //处理 变量
+        self.path = substitute_variables(&self.path, variables);
         self.saveas = substitute_variables(&self.saveas, variables);
         self.target = substitute_variables(&self.target, variables);
         self.replace = substitute_variables(&self.replace, variables).to_lowercase();
@@ -218,7 +232,7 @@ impl Patch {
         if let Some(num) = variables.get_value("num") {
             if ismain(num) {
                 //是主程序 替换 saveas 为 target
-                self.saveas = self.target.to_string();
+                self.saveas = self.path.to_string();
             }
             //修复省略号
             self.replace = replace_ellipsis(&self.replace, &self.pattern)?;
@@ -251,10 +265,12 @@ impl Patch {
      */
     pub fn get_exists_path(&self) -> &str {
         if is_file_exists(&self.saveas) {
-            &self.saveas
-        } else {
-            &self.target
+            return &self.saveas;
         }
+        if is_file_exists(&self.target) {
+            return &self.target;
+        }
+        return &self.path;
     }
 }
 

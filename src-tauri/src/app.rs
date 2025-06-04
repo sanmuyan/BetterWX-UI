@@ -23,6 +23,9 @@ pub fn process_config(config: &mut Config) -> Result<()> {
 pub fn search_base_address(rule: &mut Rule) -> Result<()> {
     //构建文件信息
     let mut file_info = rule.build_file_info_by_num(-1)?;
+    println!("----------------------------------------file_info: {:?}", file_info.usedfiles);
+    //备份文件
+    win::backup_files(file_info.usedfiles)?;
     //读取文件补丁信息
     patch::read_patches(&mut file_info.patches)?;
     //替换 config.rule 的 patches 为 base_patches，用于后续 build_file_info_by_num 时，使用 base_patches 来构建文件信息
@@ -31,8 +34,6 @@ pub fn search_base_address(rule: &mut Rule) -> Result<()> {
     //根据 patches 修复 feature 功能状态
     rule.features
         .fix_features_by_base_patches(&rule.variables, &mut rule.patches)?;
-    //备份文件
-    win::backup_files(file_info.usedfiles)?;
     Ok(())
 }
 

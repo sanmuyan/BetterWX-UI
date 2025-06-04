@@ -320,6 +320,8 @@ pub struct FeatureDetail {
     #[serde(default = "default_vec_string")]
     pub dependencies: Dependencies,
     #[serde(default)]
+    pub selected: bool, // 当前选中状态,用于checkbox
+    #[serde(default)]
     pub status: bool, // 当前功能状态
     #[serde(default)]
     pub tdelay: u32, // 文本显示延迟

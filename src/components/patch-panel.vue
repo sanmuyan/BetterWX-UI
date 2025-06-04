@@ -228,7 +228,7 @@ async function handleEvent(payload) {
  * @return {*}
  */
 async function openAll(status) {
-    let filesInfoFilter = filesInfo.value.filter(item => item.features.find(feature => feature.code == "select" && feature.status))
+    let filesInfoFilter = filesInfo.value.filter(item => item.features.find(feature => feature.code == "select" && feature.selected))
     let files = []
     for (let fileInfo of filesInfoFilter) {
         let feature = fileInfo.features.find(item => item.code == "open")
@@ -250,24 +250,24 @@ async function openAll(status) {
  * @return {*}
  */
 async function setSelectAll(status,num) {
-    let selected = []
+    let selectedItems = []
     filesInfo.value.forEach(item => {
         item.features.forEach(feature => {
             if (feature.code == "select") {
                 if (num) {
-                    feature.status = num == "Y" || item.num == num ? status : feature.status 
+                    feature.selected = num == "Y" || item.num == num ? status : feature.selected 
                 }else{
-                    feature.status = status
+                    feature.selected = status
                 }
-                if (feature.status) {
-                    selected.push(item.num)
+                if (feature.selected) {
+                    selectedItems.push(item.num)
                 }
             }
         })
     })
     let storeData = {
         code: baseRule.value.code,
-        selected: selected
+        selected: selectedItems
     }
     await save(storeData)
 }
@@ -285,13 +285,13 @@ async function setSelectAll(status,num) {
     filesInfo.value.forEach(item => {
         item.features.forEach(feature => {
             if (feature.code == "select") {
-                feature.status = selected.includes(item.num)
+                feature.selected = selected.includes(item.num)
             }
         })
     })
     FeatureFileInfo.value.features.forEach(feature => {
         if (feature.code == "select_all") {
-            feature.status = selected.length == filesInfo.value.length
+            feature.selected = selected.length == filesInfo.value.length
         }
     })
 }
@@ -512,18 +512,20 @@ async function makeCoexist(feature) {
     }
     // 构建共存文件信息
     let fileInfo = await bridge.buildFileInfoByNum(baseRule.value, num)
+    console.log("fileInfo",fileInfo);
     //从主程序 feature 切换到当前共存文件 feature
     let mainFileInfo = filesInfo.value.find(fileInfo => fileInfo.ismain)
     let nowFeature = mainFileInfo.features.find(item => item.code == feature.code)
-    //同步主程序状态
-    //过滤出主程序激活i的 feature
-    const mainActivedFeatures = mainFileInfo.features.filter(feature => feature.status)
-    //设置当前程序功能状态同步主程序
-    const extFeatures = fileInfo.features.filter(feature => mainActivedFeatures.some(item => item.code === feature.code)).forEach(feature => {
-        feature.status = true
-    })
+    console.log("nowFeature",nowFeature);
+    // //同步主程序状态
+    // //过滤出主程序激活i的 feature
+    // const mainActivedFeatures = mainFileInfo.features.filter(feature => feature.status)
+    // //设置当前程序功能状态同步主程序
+    // const extFeatures = fileInfo.features.filter(feature => mainActivedFeatures.some(item => item.code === feature.code)).forEach(feature => {
+    //     feature.status = true
+    // })
     //打补丁，保存文件
-    await doPatch(fileInfo, nowFeature, true, extFeatures)
+    await doPatch(fileInfo, nowFeature, true, [])
     //添加的 fileInfo 到 filesInfo 中，展示到页面上
     //是否存在
     fileInfo.features.sort((a, b) => a.index - b.index)

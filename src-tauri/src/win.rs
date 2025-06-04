@@ -1,21 +1,31 @@
 use crate::structs::config::regedit::Regedit;
 
 use anyhow::{anyhow, Result};
+use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 use std::{fs, thread, time};
+use windows::Win32::Security::{
+    DuplicateTokenEx, SecurityImpersonation, TokenPrimary, TOKEN_ALL_ACCESS, TOKEN_DUPLICATE,
+    TOKEN_QUERY,
+};
 use windows_registry::LOCAL_MACHINE;
 
 use windows::core::{BOOL, HSTRING, PCWSTR, PWSTR};
-use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, RECT, WPARAM};
+use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, LPARAM, MAX_PATH, RECT, WPARAM};
+use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 use windows::Win32::System::Threading::{
-    CreateProcessW, DETACHED_PROCESS, PROCESS_INFORMATION, STARTUPINFOW,
+    CreateProcessW, CreateProcessWithTokenW, OpenProcess, OpenProcessToken, CREATE_NO_WINDOW,
+    CREATE_PROCESS_LOGON_FLAGS, PROCESS_ALL_ACCESS, PROCESS_CREATION_FLAGS, PROCESS_INFORMATION,
+    PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, STARTF_USESHOWWINDOW, STARTF_USESTDHANDLES,
+    STARTUPINFOW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetSystemMetrics, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId,
-    IsWindowVisible, MessageBoxW, PostMessageW, SetWindowPos, HWND_TOPMOST, MB_ICONINFORMATION,
-    MB_OK, SM_CXSCREEN, SM_CYSCREEN, SWP_NOSIZE, SWP_SHOWWINDOW, WM_KEYDOWN, WM_KEYUP,
+    EnumWindows, GetClassNameW, GetSystemMetrics, GetWindowRect, GetWindowTextW,
+    GetWindowThreadProcessId, IsWindowVisible, MessageBoxW, PostMessageW, SetWindowPos,
+    HWND_TOPMOST, MB_ICONINFORMATION, MB_OK, SM_CXSCREEN, SM_CYSCREEN, SWP_NOSIZE, SWP_SHOWWINDOW,
+    SW_HIDE, WM_KEYDOWN, WM_KEYUP,
 };
 
 /**
@@ -49,7 +59,6 @@ pub fn is_file_exists(file: &str) -> bool {
  * @return 如果文件存在返回true，否则返回false
  */
 pub fn is_files_exists(files: &[String]) -> bool {
-    println!("检查文件是否存在 : {:?}  : {:?}", files, &files.is_empty());
     if files.is_empty() {
         return false;
     }
@@ -93,13 +102,19 @@ pub fn del_files(files: Vec<String>) -> Result<()> {
  * @description: 备份一组文件
  */
 pub fn backup_files(files: Vec<String>) -> Result<()> {
-    for file in files {
-        if !is_file_exists(&file) {
-            return Err(anyhow!("文件不存在: {}", &file));
+    let new_files = files
+        .iter()
+        .map(|file| format!("{}.bak", &file))
+        .collect::<Vec<String>>();
+    if !is_files_exists(&new_files) {
+        for file in files {
+            if !is_file_exists(&file) {
+                return Err(anyhow!("文件不存在: {}", &file));
+            }
+            let backup_file = format!("{}.bak", &file);
+            fs::copy(&file, &backup_file)
+                .map_err(|_| anyhow!("备份文件失败，文件被占用，或者以管理员模式启动"))?;
         }
-        let backup_file = format!("{}.bak", &file);
-        fs::copy(&file, &backup_file)
-            .map_err(|_| anyhow!("备份文件失败，文件被占用，或者以管理员模式启动"))?;
     }
     Ok(())
 }
@@ -175,9 +190,9 @@ pub fn message_box(title: &str, message: &str) -> Result<()> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProcessInfo {
-    pid: u32,
-    path: String,
+pub struct PidPath {
+    pub pid: u32,
+    pub path: String,
 }
 
 struct WindowFinder {
@@ -260,13 +275,13 @@ pub fn run_apps_and_check(paths: &[String]) -> Result<(Vec<(u32, HWND)>, Vec<Str
     let mut process_infos = vec![];
     let mut pids = vec![];
     for path in paths {
-        match create_process_w(path) {
+        match try_run_as_user(path) {
             Ok(pinfo) => {
-                process_infos.push(ProcessInfo {
-                    pid: pinfo.dwProcessId,
+                process_infos.push(PidPath {
+                    pid: pinfo,
                     path: path.clone(),
                 });
-                pids.push(pinfo.dwProcessId);
+                pids.push(pinfo);
             }
             Err(e) => {
                 println!("启动 {} 失败: {}", path, e);
@@ -284,10 +299,7 @@ pub fn run_apps_and_check(paths: &[String]) -> Result<(Vec<(u32, HWND)>, Vec<Str
  * @param pids 所有尝试启动的进程ID列表
  * @param hwnds 成功获取窗口的(pid, hwnd)列表
  */
-pub fn check_missing_processes(
-    process_infos: &[ProcessInfo],
-    hwnds: &[(u32, HWND)],
-) -> Vec<String> {
+pub fn check_missing_processes(process_infos: &[PidPath], hwnds: &[(u32, HWND)]) -> Vec<String> {
     let found_pids: Vec<u32> = hwnds.iter().map(|(pid, _)| *pid).collect();
     let mut apps = vec![];
     process_infos.iter().for_each(|info| {
@@ -375,35 +387,131 @@ pub fn sort_apps(hwnds: &[(u32, HWND)]) -> Result<()> {
     Ok(())
 }
 
-/**
- * 启动App
- * @param command_line 文件路径
- * @return 进程ID
- * @throws anyhow::Error 启动失败
- */
-pub fn create_process_w(command_line: &str) -> Result<PROCESS_INFORMATION> {
-    let command_line = Some(PWSTR(HSTRING::from(command_line).as_ptr() as _));
-    let startup_info = STARTUPINFOW::default();
+pub fn try_run_as_user(exe_path: &str) -> Result<u32> {
+    match run_as_user(&exe_path) {
+        Ok(hwnd) => return Ok(hwnd),
+        Err(_) => return create_process_w(&exe_path, false),
+    }
+}
+
+pub fn create_process_w(file: &str, hidden: bool) -> Result<u32> {
+    let mut file_wide: Vec<u16> = std::ffi::OsStr::new(file)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let file_ptr = Some(unsafe { std::mem::transmute(file_wide.as_mut_ptr()) });
+
+    let mut startup_info = STARTUPINFOW::default();
+    if hidden {
+        startup_info.dwFlags = STARTF_USESHOWWINDOW;
+        startup_info.wShowWindow = SW_HIDE.0 as u16;
+    }
+
+    let creation_flags = if hidden {
+        CREATE_NO_WINDOW
+    } else {
+        PROCESS_CREATION_FLAGS(0)
+    };
+
     let mut process_info = PROCESS_INFORMATION::default();
+    let mut startup_info = STARTUPINFOW::default();
     unsafe {
+        //尝试设置父进程为explorer.exe
+        let find_infos = find_pid_by_name("explorer.exe");
+        if let Ok(pifs) = find_infos {
+            if let Some(pif) = pifs.first() {
+                let parent_handle = OpenProcess(PROCESS_ALL_ACCESS, false, pif.pid);
+                if let Ok(parent_handle) = parent_handle {
+                    startup_info.hStdInput = parent_handle;
+                    startup_info.hStdOutput = parent_handle;
+                    startup_info.hStdError = parent_handle;
+                    startup_info.dwFlags |= STARTF_USESTDHANDLES;
+                }
+            }
+        }
         CreateProcessW(
             None,
-            command_line,
+            file_ptr,
             None,
             None,
             false,
-            DETACHED_PROCESS,
+            creation_flags,
             None,
             None,
             &startup_info,
             &mut process_info,
         )
-        .map_err(|e| anyhow!("启动App失败{}", e))?;
-        thread::sleep(time::Duration::from_millis(1000));
+        .map_err(|e| anyhow!("启动App失败，{}", e))?;
+
+        std::thread::sleep(std::time::Duration::from_millis(100));
         let _ = CloseHandle(process_info.hThread);
         let _ = CloseHandle(process_info.hProcess);
     }
-    Ok(process_info)
+    Ok(process_info.dwProcessId)
+}
+
+pub fn run_as_user(exe_path: &str) -> Result<u32> {
+    let process_infos = find_pid_by_name("explorer.exe").map_err(|_| anyhow!("降权运行失败"))?;
+    if let None = process_infos.first() {
+        return Err(anyhow!("降权运行失败"));
+    }
+    let explorer_process = unsafe {
+        OpenProcess(
+            PROCESS_QUERY_INFORMATION,
+            false,
+            process_infos.first().unwrap().pid,
+        )?
+    };
+    let mut explorer_token = HANDLE::default();
+    unsafe {
+        OpenProcessToken(
+            explorer_process,
+            TOKEN_DUPLICATE | TOKEN_QUERY,
+            &mut explorer_token,
+        )?
+    };
+    let mut new_token = HANDLE::default();
+    unsafe {
+        DuplicateTokenEx(
+            explorer_token,
+            TOKEN_ALL_ACCESS,
+            None,
+            SecurityImpersonation,
+            TokenPrimary,
+            &mut new_token,
+        )?
+    };
+
+    let mut startup_info = STARTUPINFOW::default();
+    startup_info.hStdInput = explorer_process;
+    startup_info.hStdOutput = explorer_process;
+    startup_info.hStdError = explorer_process;
+    startup_info.dwFlags |= STARTF_USESTDHANDLES;
+    let mut process_info = PROCESS_INFORMATION::default();
+    let mut exe_wide: Vec<u16> = std::ffi::OsStr::new(exe_path)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let exe_ptr = PWSTR::from_raw(exe_wide.as_mut_ptr());
+    unsafe {
+        CreateProcessWithTokenW(
+            new_token,
+            CREATE_PROCESS_LOGON_FLAGS(0),
+            None,
+            Some(exe_ptr),
+            PROCESS_CREATION_FLAGS(0),
+            None,
+            None,
+            &startup_info,
+            &mut process_info,
+        )?;
+        let _ = CloseHandle(process_info.hThread);
+        let _ = CloseHandle(process_info.hProcess);
+        let _ = CloseHandle(new_token);
+        let _ = CloseHandle(explorer_token);
+        let _ = CloseHandle(explorer_process);
+    }
+    Ok(process_info.dwProcessId as u32)
 }
 
 /**
@@ -456,6 +564,145 @@ unsafe extern "system" fn enum_windows_proc(hwnd: HWND, lparam: LPARAM) -> BOOL 
         }
     }
     BOOL::from(true)
+}
+
+#[derive(Debug)]
+pub struct ProcessInfos(pub Vec<ProcessInfo>);
+impl ProcessInfos {
+    pub fn retain_process_info(
+        &self,
+        class_name: Option<&str>,
+        window_name: Option<&str>,
+    ) -> ProcessInfos {
+        let p = self
+            .0
+            .iter()
+            .filter(|p| {
+                p.class_name.contains(class_name.unwrap_or(""))
+                    && p.window_name.contains(window_name.unwrap_or(""))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        Self(p)
+    }
+    pub fn first(&self) -> Option<Box<&ProcessInfo>> {
+        if self.0.is_empty() {
+            return None;
+        }
+        Some(Box::new(&self.0[0]))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProcessInfo {
+    pub pid: u32,
+    pub hwnd: u32,
+    pub class_name: String,
+    pub window_name: String,
+}
+
+struct WindowFinder2 {
+    process_name: String,
+    process_infos: ProcessInfos,
+    all: bool,
+}
+
+pub fn find_pid_by_name(process_name: &str) -> Result<ProcessInfos> {
+    find_pids_by_name(process_name, false)
+}
+
+pub fn find_pid_by_name_all(process_name: &str) -> Result<ProcessInfos> {
+    find_pids_by_name(process_name, true)
+}
+
+fn find_pids_by_name(process_name: &str, all: bool) -> Result<ProcessInfos> {
+    let mut finder = WindowFinder2 {
+        process_name: process_name.to_string(),
+        process_infos: ProcessInfos(Vec::new()),
+        all,
+    };
+    let lparam = LPARAM(&mut finder as *mut WindowFinder2 as isize);
+    unsafe {
+        let _ = EnumWindows(Some(enum_windows_callback), lparam);
+    }
+    if finder.process_infos.0.is_empty() {
+        return Err(anyhow!("未找到进程: {}", process_name));
+    }
+    Ok(finder.process_infos)
+}
+
+unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    // 获取窗口大小
+    let mut rect = RECT::default();
+    unsafe {
+        let _ = GetWindowRect(hwnd, &mut rect);
+    };
+    let finder = unsafe { &mut *(lparam.0 as *mut WindowFinder2) };
+    let mut window_pid = 0u32;
+    unsafe { GetWindowThreadProcessId(hwnd, Some(&mut window_pid)) };
+    if window_pid != 0 {
+        let process = unsafe {
+            OpenProcess(
+                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                false,
+                window_pid,
+            )
+            .ok()
+        };
+        if let Some(process) = process {
+            let mut module_name = [0u16; MAX_PATH as usize];
+            if unsafe { GetModuleFileNameExW(Some(process), None, &mut module_name) } != 0 {
+                let module_path = String::from_utf16_lossy(&module_name);
+                let exe_name = Path::new(&module_path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("");
+                if exe_name
+                    .to_lowercase()
+                    .contains(&finder.process_name.to_lowercase())
+                {
+                    // 获取窗口类名
+                    let mut class_buf = [0u16; 256];
+                    let len = unsafe { GetClassNameW(hwnd, &mut class_buf) };
+                    let class_name = if len == 0 {
+                        String::new()
+                    } else {
+                        String::from_utf16_lossy(&class_buf[..len as usize])
+                    };
+                    // 获取窗口标题
+                    let mut title_buf = [0u16; 256];
+                    let len = unsafe { GetWindowTextW(hwnd, &mut title_buf) };
+                    let window_name = if len == 0 {
+                        String::new()
+                    } else {
+                        String::from_utf16_lossy(&title_buf[..len as usize])
+                    };
+                    let hwnd_u32 = hwnd.0 as u32;
+                    if !finder
+                        .process_infos
+                        .0
+                        .iter()
+                        .find(|p| p.hwnd == hwnd_u32)
+                        .is_some()
+                    {
+                        let process_info = ProcessInfo {
+                            pid: window_pid,
+                            hwnd: hwnd_u32,
+                            class_name,
+                            window_name,
+                        };
+                        finder.process_infos.0.push(process_info);
+                    }
+                    if !finder.all {
+                        let _ = unsafe { CloseHandle(process) };
+                        return BOOL(0); // 找到匹配进程，停止枚举
+                    }
+                }
+            }
+            let _ = unsafe { CloseHandle(process) };
+        }
+    }
+    BOOL(1) // 继续枚举
 }
 
 /**

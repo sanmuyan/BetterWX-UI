@@ -34,18 +34,19 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
         if file_data.is_empty() {
             return Err(anyhow!("读取文件失败:{}", &path));
         }
-        // 设置 应用补丁的数据，是还原还是打补丁
-        let patch_str = if patch.status {
-            &patch.replace
-        } else {
-            &patch.pattern
-        };
-        let patch_bytes = hex_decode_to_vec(patch_str)?;
+
         println!(
-            "应用补丁:{} status:{} patch_str:{}",
-            patch.code, patch.status, patch_str
+            "应用补丁:{} status:{} ",
+            patch.code, patch.status
         );
         for address in patch.addresses.iter() {
+            // 设置 应用补丁的数据，是还原还是打补丁
+            let patch_str = if patch.status {
+                &patch.replace
+            } else {
+                &address.origina
+            };
+            let patch_bytes = hex_decode_to_vec(patch_str)?;
             // 检查是否超出文件长度
             if address.end > file_data.len() || patch_bytes.len() != address.len {
                 return Err(anyhow!(
@@ -53,6 +54,7 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
                     &patch.name
                 ));
             }
+            
             //修补指定区域的数据
             file_data[address.start..address.end].copy_from_slice(&patch_bytes);
             //patch.patched = status;
@@ -76,29 +78,27 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
 pub fn read_patches(patches: &mut Patches) -> Result<()> {
     let mut file_cache: HashMap<String, Vec<u8>> = HashMap::new();
     let mut file_cache_str: HashMap<String, String> = HashMap::new();
-
     for patch in patches.0.iter_mut() {
         if !patch.supported || patch.disabled {
             continue;
         }
-        let path = patch.get_exists_path();
-
-        let file_data = file_cache
-            .entry(patch.saveas.to_string())
-            .or_insert_with(|| std::fs::read(&path).unwrap_or_else(|_| Vec::new()));
-        //读取文件失败
-        if file_data.is_empty() {
-            return Err(anyhow!("读取文件失败:{}", &path));
-        }
-
         // 搜索模式
         if patch.addresses.is_empty() {
+            let path: &str = &patch.target;
+            let file_data = file_cache
+                .entry(patch.target.to_string())
+                .or_insert_with(|| std::fs::read(&path).unwrap_or_else(|_| Vec::new()));
+            //读取文件失败
+            if file_data.is_empty() {
+                return Err(anyhow!("读取文件失败:{}", &path));
+            }
+            println!("搜索moshi: - path: &str:{}", path);
             if patch.searched {
                 return Ok(());
             }
             patch.searched = true;
             let file_data_str = file_cache_str
-                .entry(patch.saveas.to_string())
+                .entry(patch.target.to_string())
                 .or_insert_with(|| hex_string(file_data));
             //首次搜索原始特征码
             if patch.pattern.is_empty() {
@@ -128,6 +128,11 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             );
         } else {
             // 读取模式
+            let path: &str = patch.get_exists_path();
+            let file_data = file_cache
+                .entry(path.to_string())
+                .or_insert_with(|| std::fs::read(&path).unwrap_or_else(|_| Vec::new()));
+            //读取文件失败
             let mut patched = true;
             for address in patch.addresses.iter_mut() {
                 let slice = &file_data[address.start..address.end];
@@ -168,7 +173,7 @@ fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, Strin
                 let end = matched.end() / 2;
                 let len = end - start;
                 origina = matched.as_str().to_string();
-                result.push(Address::new(start, end, len));
+                result.push(Address::new(start, end, len, origina.clone()));
             }
         }
     }

@@ -5,7 +5,7 @@
                 <b class="m-r">{{ fileInfo.name }}</b>
                 <template v-for="(feature, index) in fileInfo.features" :key="index">
                     <div v-if="isShow(feature, 'checkbox')" class="flex items-center gap m-r">
-                        <Checkbox v-model="feature.status" @change="checkBoxChange(feature)" binary />
+                        <Checkbox v-model="feature.selected" @change="checkBoxChange(feature)" binary />
                     </div>
                     <div v-if="isShow(feature, 'switch')" class="flex items-center gap m-r">
                         <label :for="feature.code">{{ feature.name }}</label>
@@ -46,7 +46,7 @@ const props = defineProps({
 const emit = defineEmits(['event'])  
 
 function checkBoxChange( feature) {
-    handleEvent(feature.status, feature)
+    handleEvent(feature.selected, feature)
 }
 
 function handleEvent($event, feature) {

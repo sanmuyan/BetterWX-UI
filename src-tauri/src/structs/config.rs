@@ -420,7 +420,7 @@ const DEFAULT_FEATURE: &str = r#"[
       "code": "floder",
       "name": "打开目录",
       "description": "打开文件所在目录",
-      "inmain": true,
+      "inhead": true,
       "index": 120,
       "style": "button",
       "supported": true,
