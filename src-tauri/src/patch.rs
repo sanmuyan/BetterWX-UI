@@ -65,7 +65,7 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
     for (path, data) in file_cache {
         println!("应用补丁保存的文件:{}", &path);
         std::fs::write(path, data)
-            .map_err(|_| anyhow!("保存文件失败，文件被占用，或者以管理员模式启动"))?;
+            .map_err(|_| anyhow!("保存文件失败，请先关闭所有WX程序"))?;
     }
     Ok(())
 }
@@ -92,7 +92,6 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             if file_data.is_empty() {
                 return Err(anyhow!("读取文件失败:{}", &path));
             }
-            println!("搜索moshi: - path: &str:{}", path);
             if patch.searched {
                 return Ok(());
             }

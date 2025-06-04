@@ -1,0 +1,35 @@
+{
+    "version": "2.0.7",
+    "description": "添加批量启动功能\n设置单例模式\n保存窗口状态\n调整部分页面布局",
+    "name":"BetterWx-UI",
+    "notforce":false,
+    "buttons": [
+        {
+            "code": "lanzou",
+            "name": "网盘",
+            "url": "https://wwtt.lanzn.com/b0pmh8e1i?请输入密码:52pj"
+        },
+        {
+            "code": "github",
+            "name": "github",
+            "url": "https://github.com/afaa1991/BetterWx-UI"
+        }
+    ],
+    "config": {
+        "version": "0.0.20",
+        "url": "config.zip"
+    },
+    "readme": {
+        "version": "0.0.16",
+        "url": "README.md"
+    },
+    "others":[
+        {
+            "version":"2.0.8",
+             "config": {
+                "version": "0.0.21",
+                "url": "2.0.8/config.zip"
+            }
+        }
+    ]
+}

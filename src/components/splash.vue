@@ -3,8 +3,8 @@
         <div class="flex col justify-center items-center" style="height: 200px; width: 300px;">
             <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="transparent" />
             <TransitionGroup name="fade" tag="div" class="text-center w-full overflow-hidden m-y" style="height: 60px;">
-                <div v-for="(message, index) in mesages" :key="index"
-                    :style="{ opacity: 1 - index * 0.15 }" class="w-full text-center">
+                <div v-for="(message, index) in mesages" :key="index" :style="{ opacity: 1 - index * 0.15 }"
+                    class="w-full text-center">
                     {{ message }}
                 </div>
             </TransitionGroup>
@@ -60,7 +60,9 @@ async function checkUpdate() {
         // 设置title
         let showVersion = TEST_MODE ? `${appVersion} 测试版` : appVersion
         setTitle(appName, showVersion)
-        updateInfo.value = await http(UPDATE_URL + "?r=" + Math.random())
+        let info = await http(UPDATE_URL + "?r=" + Math.random())
+        updateInfo.value = await dealOtherVersion(info)
+        console.log("updateInfo.valueupdateInfo.value", updateInfo.value);
         //从更新文件加载app名称
         if (!TEST_MODE && updateInfo.value.name) {
             setTitle(updateInfo.value.name || appName, appVersion)
@@ -135,7 +137,7 @@ async function loadConfig() {
         config = await http(updateInfo.value.config.url + "?r=" + Math.random(), { text: true })
         let key = `${appName} ${updateInfo.value.config.version}`
         console.log("解密key", key);
-        config = JSON.parse(decryptText(config,key))
+        config = JSON.parse(decryptText(config, key))
         console.log("解析配置文件", config)
         if (updateInfo.value.config.version != config.version) {
             throw new Error("update和config配置文件版本号不一致")
@@ -146,6 +148,17 @@ async function loadConfig() {
         }
     }
     return config
+}
+
+async function dealOtherVersion(info) {
+    const appVersion = await getVersion()
+    info?.others?.find((item) => {
+        if (compareVersion(appVersion, item.version) >= 0) {
+            info = { ...info, ...item }
+            return info
+        }
+    })
+    return info
 }
 
 /**

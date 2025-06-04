@@ -93,7 +93,7 @@ pub fn del_files(files: Vec<String>) -> Result<()> {
             return Err(anyhow!("应用程序不存在: {}", file));
         }
         fs::remove_file(file)
-            .map_err(|_| anyhow!("删除文件失败，文件被占用，或者以管理员模式启动"))?;
+            .map_err(|_| anyhow!("删除文件失败，请先关闭所有WX程序"))?;
     }
     Ok(())
 }
@@ -113,7 +113,7 @@ pub fn backup_files(files: Vec<String>) -> Result<()> {
             }
             let backup_file = format!("{}.bak", &file);
             fs::copy(&file, &backup_file)
-                .map_err(|_| anyhow!("备份文件失败，文件被占用，或者以管理员模式启动"))?;
+                .map_err(|_| anyhow!("备份文件失败，请先关闭所有WX程序"))?;
         }
     }
     Ok(())
