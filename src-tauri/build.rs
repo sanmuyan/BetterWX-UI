@@ -1,7 +1,11 @@
-fn main() {
-    let mut windows = tauri_build::WindowsAttributes::new();
-    windows = windows.app_manifest(
-        r#"
+// 根据ADMIN_FEATURE环境变量决定构建管理员权限还是普通权限程序
+//npm run tauri-build:admin 和 npm run tauri-build
+fn main() { 
+    #[cfg(feature = "admin")]
+    {
+        let mut windows = tauri_build::WindowsAttributes::new();
+        windows = windows.app_manifest(
+            r#"
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <dependency>
     <dependentAssembly>
@@ -24,7 +28,13 @@ fn main() {
   </trustInfo>
 </assembly>
 "#,
-    );
-    tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows))
-        .expect("failed to run build script");
+        );
+        tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows))
+            .expect("failed to run build script");
+    }
+
+    #[cfg(not(feature = "admin"))]
+    {
+        tauri_build::build();
+    }
 }

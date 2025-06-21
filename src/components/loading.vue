@@ -23,6 +23,7 @@ const showLoading = ref(false)
 watch(() => props.show, (newValue) => {
     newValue ? showLoading.value = true : setTimeout(() => {
         showLoading.value = false
-    }, 300)
+    }, 150)
 })
+
 </script>

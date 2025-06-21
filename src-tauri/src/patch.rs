@@ -102,11 +102,13 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             if patch.pattern.is_empty() {
                 return Err(anyhow!("待匹配特征码无效:{} ", &patch.code));
             }
-            let mut search_result = hex_search(file_data_str, &patch.pattern, patch.multiple)?;
+            let mut search_result =
+                hex_search(file_data, file_data_str, &patch.pattern, patch.multiple)?;
             //如果没有找到，再搜索替换特征码
             if !search_result.0 && !patch.replace.is_empty() {
                 patched = true;
-                search_result = hex_search(file_data_str, &patch.replace, patch.multiple)?
+                search_result =
+                    hex_search(file_data, file_data_str, &patch.replace, patch.multiple)?
             }
 
             let (found, origina, addresses) = search_result;
@@ -151,6 +153,19 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
     Ok(())
 }
 
+fn hex_search(
+    data: &[u8],
+    data_text: &str,
+    reg_text: &str,
+    multiple: bool,
+) -> Result<(bool, String, Vec<Address>)> {
+    if is_reg_pattern(reg_text) {
+        return text_search(data_text, reg_text, multiple);
+    } else {
+        return sunday_search(data, reg_text, multiple);
+    }
+}
+
 /**
  * 在十六进制数据中搜索指定特征码
  * @param data 要搜索的十六进制字符串
@@ -158,7 +173,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
  *
  * @return 返回一个元组
  */
-fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, String, Vec<Address>)> {
+fn text_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, String, Vec<Address>)> {
     let reg =
         Regex::new(&reg_text.to_ascii_lowercase()).map_err(|e| anyhow!("特征码错误 {}", e))?;
     let mut result = Vec::new();
@@ -178,4 +193,81 @@ fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, Strin
         }
     }
     Ok((!result.is_empty(), origina, result))
+}
+
+/**
+ * 使用Sunday算法在u8数组中搜索模式
+ * @param data 要搜索的u8数组
+ * @param pattern 要匹配的模式字符串，支持.通配符
+ * @param multiple 是否允许多个匹配结果
+ * @return 返回一个元组(是否找到匹配, 匹配的原始数据, 匹配的地址列表)
+ */
+pub fn sunday_search(
+    data: &[u8],
+    pattern: &str,
+    multiple: bool,
+) -> Result<(bool, String, Vec<Address>)> {
+    let mut result = Vec::new();
+    let mut origina = String::new();
+    // 将hex字符串转换为字节序列
+    let hex_bytes = pattern.replace("..", "00").replace("??", "00");
+    let pattern_bytes = hex_decode_to_vec(&hex_bytes)
+        .map_err(|e| anyhow!("无效的hex模式字符串: {}", e))?;
+    
+    let pattern_len = pattern_bytes.len();
+    let data_len = data.len();
+
+    if pattern_len == 0 || data_len < pattern_len {
+        return Ok((false, origina, result));
+    }
+
+    // 预处理坏字符跳转表
+    let mut shift = [pattern_len + 1; 256];
+    for (i, &b) in pattern_bytes.iter().enumerate() {
+        shift[b as usize] = pattern_len - i;
+    }
+
+    let mut i = 0;
+    while i <= data_len - pattern_len {
+        // 尝试匹配模式
+        let mut matched = true;
+        for (j, &p) in pattern_bytes.iter().enumerate() {
+            // 处理通配符
+            let pattern_char = pattern.chars().nth(j * 2).unwrap_or('\0');
+            if pattern_char != '.' && pattern_char != '?' && data[i + j] != p {
+                matched = false;
+                break;
+            }
+        }
+
+        if matched {
+            // 记录匹配结果
+            let start = i;
+            let end = i + pattern_len;
+            let matched_bytes = &data[start..end];
+            origina = hex_string(matched_bytes);
+            result.push(Address::new(start, end, pattern_len, origina.clone()));
+
+            if !multiple {
+                break;
+            }
+            i += pattern_len;
+        } else {
+            // Sunday算法跳转
+            if i + pattern_len < data_len {
+                let next_char = data[i + pattern_len];
+                i += shift[next_char as usize];
+            } else {
+                break;
+            }
+        }
+    }
+
+    Ok((!result.is_empty(), origina, result))
+}
+
+fn is_reg_pattern(reg_text: &str) -> bool {
+    !reg_text
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '?')
 }

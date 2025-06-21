@@ -180,7 +180,7 @@ async function handleEvent(payload) {
                 await del(fileInfo)
                 break
             case "open":
-                await bridge.runApp(feature.target)
+                await bridge.runApps([feature.target], true, true)
                 break
             case "floder":
                 await bridge.openFolder(feature.target)
@@ -209,6 +209,9 @@ async function handleEvent(payload) {
                 break
             case "open_all":
                 await openAll(true)
+                break
+             case "close":
+                await bridge.closeApps([feature.target])
                 break
             case "close_all":
                 await openAll(false)
@@ -522,6 +525,9 @@ async function makeCoexist(feature) {
     let mainFileInfo = filesInfo.value.find(fileInfo => fileInfo.ismain)
     let nowFeature = mainFileInfo.features.find(item => item.code == feature.code)
     console.log("nowFeature",nowFeature);
+    if(!nowFeature){
+        throw new Error(`找不到 ${feature.name || feature.code} 对应的功能数据`)
+    }
     // //同步主程序状态
     // //过滤出主程序激活i的 feature
     // const mainActivedFeatures = mainFileInfo.features.filter(feature => feature.status)
@@ -534,10 +540,17 @@ async function makeCoexist(feature) {
     //添加的 fileInfo 到 filesInfo 中，展示到页面上
     //是否存在
     fileInfo.features.sort((a, b) => a.index - b.index)
+    //设置默认select为true
+    fileInfo.features.map(item=>{
+        if(item.code == "select"){ 
+            item.selected = true
+        }
+    }) 
     if (!filesInfo.value.find(item => item.num == num)) {
         filesInfo.value.push(fileInfo)
         filesInfo.value.sort((a, b) => a.index - b.index)
     }
+    setSelectAll(true,num)
 }
 
 /**

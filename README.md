@@ -1,12 +1,12 @@
-<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/2.0.0/src-tauri/icons/128x128@2x.png" width="250px"></h3>
+<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/refs/heads/2.0.0/src-tauri/icons/128x128@2x.png" width="250px"></h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-green">
-  <img src="https://img.shields.io/github/stars/afaa1991/BetterWx-UI">
+  <img src="https://img.shields.io/github/stars/afaa1991/BetterWX-UI">
   <img src="https://img.shields.io/badge/WeChat-3.9~4.0-blue">
 </p>
 
-# ✨ BetterWx-UI ✨
+# ✨ BetterWX-UI ✨
 
 **使用软件可能导致功能限制、封号等行为。请自行评估风险，不承担任何责任。**
 
@@ -34,7 +34,7 @@
 ## 📜 鸣谢
 
 - 项目开源地址
-    - BetterWx-UI [https://github.com/afaa1991/BetterWx-UI](https://github.com/afaa1991/BetterWx-UI)
+    - BetterWX-UI [https://github.com/afaa1991/BetterWX-UI](https://github.com/afaa1991/BetterWX-UI)
 
 - **zetaloop：原始项目**
     - BetterWX [https://github.com/zetaloop/BetterWX](https://github.com/zetaloop/BetterWX)
@@ -64,7 +64,7 @@
 
 ## 🔄 批量启动多账号
 
-- 方法1. [BetterWx-Starter](https://github.com/afaa1991/BetterWx-Starter)
+- 方法1. [BetterWX-Starter](https://github.com/afaa1991/BetterWX-Starter)
 
 - 基于 Rust 的实现的批量启动小玩具 支持自动排序、自动登录
 
@@ -86,4 +86,4 @@ timeout /t 1 /nobreak >nul
 
 ## 📺 截图
 
-<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWx-UI/refs/heads/2.0.0/screenshot.png" width="640px"></h3>
+<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/refs/heads/2.0.0/screenshot.png" width="640px"></h3>

@@ -12,6 +12,7 @@ use crate::structs::files_info::{FileInfo, FilesInfo};
 use tauri::Manager;
 
 use anyhow::Result;
+use tauri_plugin_window_state::{StateFlags, WindowExt};
 
 /**
  * 检查文件是否存在
@@ -107,8 +108,8 @@ fn apply_patch(patches: Patches) -> Result<Patches, MyError> {
  */
 #[tauri::command(async)]
 fn remove_patches_backup_files(patches: Patches) -> Result<(), MyError> {
-   let files = patches.get_bak_files();    
-   println!("remove_patches_backup_files    {:?}",files);
+    let files = patches.get_bak_files();
+    println!("remove_patches_backup_files    {:?}", files);
     Ok(win::del_files(files)?)
 }
 
@@ -164,7 +165,7 @@ pub fn run() {
             parse_config,
             search_base_address,
             refresh_files_info,
-            apply_patch, 
+            apply_patch,
             build_file_info_by_num,
             is_files_exists,
             del_files,
@@ -177,6 +178,27 @@ pub fn run() {
             build_feature_file_info,
             remove_patches_backup_files
         ])
+        .setup(|app| {
+            let main_window = app.get_webview_window("main").unwrap();
+            let _ = main_window.restore_state(StateFlags::all());
+
+            // 获取窗口当前尺寸
+            if let Ok(size) = main_window.inner_size() {
+                const MIN_WIDTH: u32 = 720;
+                const MIN_HEIGHT: u32 =  360;
+                // 如果窗口尺寸小于最小值，则设置为最小值
+                if size.width < MIN_WIDTH || size.height < MIN_HEIGHT {
+                    let size = tauri::Size::Logical(tauri::LogicalSize {
+                        width: MIN_WIDTH as f64,
+                        height: MIN_HEIGHT as f64,
+                    });
+                    main_window.set_min_size(Some(size))?;
+                    main_window.set_size(size)?;
+                }
+            }
+            main_window.show()?;
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
