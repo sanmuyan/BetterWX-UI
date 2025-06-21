@@ -92,8 +92,7 @@ pub fn del_files(files: Vec<String>) -> Result<()> {
         if !is_file_exists(&file) {
             return Err(anyhow!("应用程序不存在: {}", file));
         }
-        fs::remove_file(file)
-            .map_err(|_| anyhow!("删除文件失败，请先关闭所有WX程序"))?;
+        fs::remove_file(file).map_err(|_| anyhow!("删除文件失败，请先关闭所有WX程序"))?;
     }
     Ok(())
 }
@@ -221,19 +220,24 @@ pub fn run_apps(paths: &[String], auto_login: bool, close_first: bool) -> Result
         let _ = close_apps(&paths);
         thread::sleep(time::Duration::from_millis(1000));
     }
-    let (hwnds, missing) = run_apps_and_check(&paths)?;
-    all_hwnds.extend(hwnds);
-    let _ = sort_apps(&all_hwnds);
     if auto_login {
-        let _ = send_enter_to_apps(&all_hwnds);
+        let (hwnds, missing) = run_apps_and_check(&paths)?;
+        all_hwnds.extend(hwnds);
+        let _ = sort_apps(&all_hwnds);
+        if auto_login {
+            let _ = send_enter_to_apps(&all_hwnds);
+        }
+        if missing.is_empty() {
+            return Ok(());
+        }
+        return Err(anyhow!(
+            "启动失败，有 {} 个App未启动或已登录",
+            missing.len()
+        ));
+    } else {
+        let _ = run_apps_and_notcheck(&paths);
     }
-    if missing.is_empty() {
-        return Ok(());
-    }
-    Err(anyhow!(
-        "启动失败，有 {} 个App未启动或已登录",
-        missing.len()
-    ))
+    Ok(())
 }
 
 /**
@@ -262,6 +266,32 @@ pub fn close_app(exe_name: &str) -> Result<()> {
         .arg(format!("taskkill /F /IM {}", exe_name))
         .spawn()
         .map_err(|e| anyhow!("结束程序失败: {}", e))?;
+    Ok(())
+}
+
+/**
+ * 启动App
+ * @param apps 文件路径
+ * @return 窗口句柄列表
+ * @throws anyhow::Error 启动失败
+ */
+pub fn run_apps_and_notcheck(paths: &[String]) -> Result<()> {
+    let mut process_infos = vec![];
+    let mut pids = vec![];
+    for path in paths {
+        match try_run_as_user(path) {
+            Ok(pinfo) => {
+                process_infos.push(PidPath {
+                    pid: pinfo,
+                    path: path.clone(),
+                });
+                pids.push(pinfo);
+            }
+            Err(e) => {
+                println!("启动 {} 失败: {}", path, e);
+            }
+        }
+    }
     Ok(())
 }
 
