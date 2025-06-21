@@ -180,7 +180,7 @@ async function handleEvent(payload) {
                 await del(fileInfo)
                 break
             case "open":
-                await bridge.runApps([feature.target], true, false)
+                await bridge.runApps([feature.target], false, false)
                 break
             case "floder":
                 await bridge.openFolder(feature.target)
