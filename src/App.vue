@@ -2,22 +2,22 @@
   <!-- 加载中 -->
   <splash @loaded="loaded" />
   <!-- 加载完成 -->
-  <div v-if="parseConfig.version" class="container">
+  <div v-if="config.version" class="container">
     <Tabs v-model:value="tabIndex">
       <TabList>
         <Tab value="readme">说明</Tab>
-        <template v-for="(parseConfigRule, index) in parseConfig.rules" :key="index">
-          <Tab :value="parseConfigRule.code">{{ parseConfigRule.name }}</Tab>
+        <template v-for="(configRule, index) in config.rules" :key="index">
+          <Tab :value="configRule.code">{{ configRule.name }}</Tab>
         </template>
       </TabList>
       <TabPanels class="p-t-0">
         <TabPanel value="readme">
           <ReadmePanel :style="scrollTotalStyle" :updateInfoReadme="updateInfo.readme" />
         </TabPanel>
-        <template v-for="(parseConfigRule, index) in parseConfig.rules" :key="index">
-          <TabPanel :value="parseConfigRule.code">
-            <PatchPanel :style="scrollStyle" :init="tabIndex == parseConfigRule.code"
-              :parseConfigRule="parseConfigRule" />
+        <template v-for="(configRule, index) in config.rules" :key="index">
+          <TabPanel :value="configRule.code">
+            <PatchPanel :style="scrollStyle" :init="tabIndex == configRule.code"
+              :configRule="configRule" />
           </TabPanel>
         </template>
       </TabPanels>
@@ -38,7 +38,7 @@ import { read, save } from "@/utils/store.js"
 provide('showToast', showToast)
 
 const toast = useToast()
-const parseConfig = ref({})
+const config = ref({})
 const updateInfo = ref({})
 const tabIndex = ref()
 
@@ -85,8 +85,8 @@ const disableRefresh = () => {
  * @return {*}
  */
 function loaded(payload) {
-  parseConfig.value = payload.data.parseConfig
-  console.log("解析config", parseConfig.value);
+  config.value = payload.data.config
+  console.log("解析config", config.value);
   updateInfo.value = payload.data.updateInfo
   console.log("updateInfo", updateInfo.value)
 }

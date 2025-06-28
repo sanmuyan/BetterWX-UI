@@ -5,7 +5,7 @@ use crate::structs::config::{
     fix_code_prefix, get_item_by_code, ismain, replace_ellipsis, replace_wildcards,
     substitute_variables, GetCode,
 };
-use crate::win::is_file_exists;
+use crate::utils::file::is_file_exists;
 
 use anyhow::{anyhow, Result};
 use faster_hex::hex_decode;

@@ -1,18 +1,15 @@
-use crate::structs::config::regedit::Regedit;
-
 use anyhow::{anyhow, Result};
+use std::path::PathBuf;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
-use std::{fs, thread, time};
+use std::{thread, time};
 use windows::Win32::Security::{
     DuplicateTokenEx, SecurityImpersonation, TokenPrimary, TOKEN_ALL_ACCESS, TOKEN_DUPLICATE,
     TOKEN_QUERY,
 };
-use windows_registry::LOCAL_MACHINE;
-
-use windows::core::{BOOL, HSTRING, PCWSTR, PWSTR};
+use windows::core::{BOOL, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, LPARAM, MAX_PATH, RECT, WPARAM};
 use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 use windows::Win32::System::Threading::{
@@ -23,99 +20,26 @@ use windows::Win32::System::Threading::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClassNameW, GetSystemMetrics, GetWindowRect, GetWindowTextW,
-    GetWindowThreadProcessId, IsWindowVisible, MessageBoxW, PostMessageW, SetWindowPos,
-    HWND_TOPMOST, MB_ICONINFORMATION, MB_OK, SM_CXSCREEN, SM_CYSCREEN, SWP_NOSIZE, SWP_SHOWWINDOW,
-    SW_HIDE, WM_KEYDOWN, WM_KEYUP,
+    GetWindowThreadProcessId, IsWindowVisible, PostMessageW, SetWindowPos, HWND_TOPMOST,
+    SM_CXSCREEN, SM_CYSCREEN, SWP_NOSIZE, SWP_SHOWWINDOW, SW_HIDE, WM_KEYDOWN, WM_KEYUP,
 };
 
-/**
- * @description: 通过注册表获取安装路径
- * @param regedit 注册表配置
- */
-pub fn get_install_variables(regedit: &mut Regedit) -> Result<()> {
-    //打开注册表路径
-    let key = LOCAL_MACHINE.open(regedit.path.as_str())?;
-    regedit.fields.0.iter_mut().try_for_each(|field| {
-        //禁用跳过
-        field.value = key
-            .get_string(&field.value)
-            .map_err(|_| return anyhow!("读取注册表字段失败: {}", &field.value))?;
-        Ok(())
-    })
+use super::file::is_file_exists;
+
+pub fn get_runtime_path() -> Result<String> {
+    let path = std::env::current_exe()
+        .map_err(|_| anyhow!("获取运行程序所在目录失败"))?
+        .parent()
+        .ok_or_else(|| anyhow!("获取运行程序所在目录失败"))?
+        .to_path_buf();
+    Ok(path.to_string_lossy().into_owned())
 }
 
-/**
- * @description: 检查文件是否存在
- * @param path 文件路径
- * @return 如果文件存在返回true，否则返回false
- */
-pub fn is_file_exists(file: &str) -> bool {
-    Path::new(file).exists()
-}
-
-/**
- * @description: 检查一组文件是否存在
- * @param path 文件路径
- * @return 如果文件存在返回true，否则返回false
- */
-pub fn is_files_exists(files: &[String]) -> bool {
-    if files.is_empty() {
-        return false;
-    }
-    let mut result = true;
-    for file in files {
-        result = result && is_file_exists(&file);
-    }
-    result
-}
-
-/**
- * @description: 检查一组文件是否全部存在
- * @param path 文件路径
- * @return 返回存在的文件路径
- */
-pub fn filter_files_is_exists(files: &Vec<String>) -> (bool, Vec<String>) {
-    let mut result = Vec::new();
-    for file in files {
-        if is_file_exists(&file) {
-            result.push(file.to_string());
-        }
-    }
-    (files.len() == result.len(), result)
-}
-
-/**
- * @description: 删除一组文件
- */
-pub fn del_files(files: Vec<String>) -> Result<()> {
-    for file in files {
-        if !is_file_exists(&file) {
-            return Err(anyhow!("应用程序不存在: {}", file));
-        }
-        fs::remove_file(file).map_err(|_| anyhow!("删除文件失败，请先关闭所有WX程序"))?;
-    }
-    Ok(())
-}
-
-/**
- * @description: 备份一组文件
- */
-pub fn backup_files(files: Vec<String>) -> Result<()> {
-    let new_files = files
-        .iter()
-        .map(|file| format!("{}.bak", &file))
-        .collect::<Vec<String>>();
-    if !is_files_exists(&new_files) {
-        for file in files {
-            if !is_file_exists(&file) {
-                return Err(anyhow!("文件不存在: {}", &file));
-            }
-            let backup_file = format!("{}.bak", &file);
-            fs::copy(&file, &backup_file)
-                .map_err(|_| anyhow!("备份文件失败，请先关闭所有WX程序"))?;
-        }
-    }
-    Ok(())
+pub fn get_runtime_file() -> Result<String> {
+    let path = std::env::current_exe()
+        .map_err(|_| anyhow!("获取程序路径失败"))?
+        .to_path_buf();
+    Ok(path.to_string_lossy().into_owned())
 }
 
 /**
@@ -165,27 +89,6 @@ pub fn get_exe_dir() -> Result<String> {
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "无法获取程序所在目录"))?
         .to_path_buf();
     Ok(path.to_string_lossy().into_owned())
-}
-
-/**
- * 显示消息框
- * @param title 标题
- * @param message 消息
- * @throws anyhow::Error 显示失败
- */
-#[allow(dead_code)]
-pub fn message_box(title: &str, message: &str) -> Result<()> {
-    let title = HSTRING::from(title);
-    let message = HSTRING::from(message);
-    unsafe {
-        MessageBoxW(
-            None,
-            PCWSTR(message.as_ptr()),
-            PCWSTR(title.as_ptr()),
-            MB_OK | MB_ICONINFORMATION,
-        );
-    }
-    Ok(())
 }
 
 #[derive(Debug, Clone)]

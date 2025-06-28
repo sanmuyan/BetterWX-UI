@@ -1,4 +1,4 @@
-use crate::structs::config::substitute_variables;
+use crate::structs::config::{paths::{PathResultItem, PathsResult}, substitute_variables};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -12,10 +12,12 @@ impl Variables {
     /**
      * @description: 调用所有 variable 的 process 方法
      */
-    pub fn process(&mut self, variables: &Variables) -> Result<()> {
-        self.0
+    pub fn process(&mut self, variables: Variables) -> Result<()> {
+        let _ = self.0
             .iter_mut()
-            .try_for_each(|variable| variable.process(variables))
+            .try_for_each(|variable| variable.process(&variables));
+        self.0.extend(variables.0);
+        Ok(())
     }
 
     /**
@@ -23,6 +25,16 @@ impl Variables {
      */
     pub fn get_value(&self, code: &str) -> Option<&String> {
         self.0.iter().find(|x| x.code == code).map(|x| &x.value)
+    }
+}
+
+impl From <PathsResult> for Variables {
+    fn from(paths_result: PathsResult) -> Variables {
+        let mut result: Vec<Variable> = Vec::new();
+        paths_result.0.iter().for_each(|path_result_item|{
+            result.push(path_result_item.into());
+        });
+        Variables(result)
     }
 }
 
@@ -52,5 +64,11 @@ impl Variable {
     pub fn process(&mut self, variables: &Variables) -> Result<()> {
         self.value = substitute_variables(&self.value, variables);
         Ok(())
+    } 
+}
+
+impl From<&PathResultItem> for Variable {
+    fn from(item: &PathResultItem) -> Self {
+        Self::new(&item.code, &item.value)
     }
 }

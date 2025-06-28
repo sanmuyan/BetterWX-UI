@@ -4,8 +4,16 @@ import { invoke } from "@tauri-apps/api/core"
  * 解析配置文件
  * @param {*} path 
  */
-export async function parseConfig(config) {
-    return await invoke('parse_config', { config })
+export async function checkConfig(config) {
+    return await invoke('check_config', { config })
+}
+
+/**
+ * 解析rule
+ * @param {*} path 
+ */
+export async function parseRule(rule) {
+    return await invoke('parse_rule', { rule })
 }
 
 /**

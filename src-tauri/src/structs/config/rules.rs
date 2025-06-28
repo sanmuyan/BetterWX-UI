@@ -1,13 +1,13 @@
-use crate::patch;
+use crate::structs::config::paths::Paths;
 use crate::structs::config::features::Features;
 use crate::structs::config::patches::Patches;
-use crate::structs::config::regedit::Regedit;
 use crate::structs::config::variables::{Variable, Variables};
-use crate::structs::config::GetCode;
+use crate::structs::config::{GetCode, DEFAULT_FEATURE};
 use crate::structs::config::{get_index_name, get_index_num, ismain, str_to_hex};
 use crate::structs::files_info::{FileInfo, FilesInfo};
 //use crate::structs::config::{get_item_by_code, get_mut_item_by_code, ismain, str_to_hex};
-use crate::win::{del_files, filter_files_is_exists, get_exe_dir};
+use crate::utils::file::{del_files, filter_files_is_exists};
+use crate::utils::patch;
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -33,29 +33,6 @@ impl Rules {
         }
         Ok(())
     }
-    /**
-     * @description: 调用所有rule的process方法
-     */
-    pub fn process(&mut self, features: &Features) -> Result<()> {
-        self.check_code()?;
-        self.0
-            .iter_mut()
-            .try_for_each(|rule| rule.process(features))
-    }
-
-    // /**
-    //  * @description: 通过 code 获取 rule 的可变引用
-    //  */
-    // pub fn get_mut_rule_by_code(&mut self, code: &str) -> Result<&mut Rule> {
-    //     get_mut_item_by_code(&mut self.0, code)
-    // }
-
-    // /**
-    //  * @description: 通过 code 获取 rule 的不可变引用
-    //  */
-    // pub fn get_rule_by_code(&mut self, code: &str) -> Result<&Rule> {
-    //     get_item_by_code(&self.0, code)
-    // }
 }
 
 /**
@@ -69,6 +46,8 @@ pub struct Rule {
     #[serde(default)]
     pub index: i32, //规则索引，用于排序
     #[serde(default)]
+    pub news: String, //通知
+    #[serde(default)]
     pub description: String, //规则描述
     #[serde(default)]
     pub disabled: bool, //是否禁用
@@ -76,7 +55,7 @@ pub struct Rule {
     pub supported: bool, //是否支持
     #[serde(default)]
     pub installed: bool, //是否安装
-    pub regedit: Regedit, //注册表配置
+    pub paths:Paths, //路径配置
     pub variables: Variables, //变量配置
     pub patches: Patches, //补丁配置
     pub features: Features, //功能配置
@@ -84,49 +63,21 @@ pub struct Rule {
 
 impl Rule {
     pub fn process(&mut self, features: &Features) -> Result<()> {
-        let backup = self.clone();
-        // 尝试从安装目录处理
-        if self.try_process_from_install_dir().is_err() {
-            // 还原并尝试从注册表处理
-            *self = backup;
-            if self.try_process_from_registry().is_err() {
-                println!("注册表读取失败: {:?}", self.code);
-                return Ok(());
-            };
-        }
+        // 处理程序路径
+        let path_variables = self.paths.get_all_path()?;
+        // 处理变量
+        self.variables.process(path_variables)?;
+        self.patches.process(&self.variables)?;
+        self.process_patch_variables()?;
         // 处理功能并更新状态
         self.process_features_and_update_status(features)
     }
 
-    /**
-     * @description: 尝试从安装目录处理
-     */
-    fn try_process_from_install_dir(&mut self) -> Result<()> {
-        let dir = get_exe_dir()?;
-        println!("运行目录:{}", &dir);
-        let variables = &mut Variables {
-            0: vec![Variable::new("install_location", &dir)],
-        };
-        self.variables.process(variables)?;
-        self.variables.0.extend(variables.0.clone());
-        self.patches.process(&self.variables)?;
-        self.process_patch_variables()
-    }
-
-    /**
-     * @description: 尝试从注册表处理
-     */
-    fn try_process_from_registry(&mut self) -> Result<()> {
-        self.regedit.process().map_err(|err| {
-            println!("未安装: {:?}", err);
-            err
-        })?;
-        println!("已经安装: {:?}", self.regedit.fields);
-        let variables = &self.regedit.fields;
-        self.variables.process(variables)?;
-        self.variables.0.extend(variables.0.clone());
-        self.patches.process(&self.variables)?;
-        self.process_patch_variables()
+    pub fn process_rule(&mut self) -> Result<()> {
+        //加载default features
+        let features: Features = serde_json::from_str(DEFAULT_FEATURE)
+            .map_err(|e| anyhow!("解析默认 features 失败:{}", e))?;
+        self.process(&features)
     }
 
     /**

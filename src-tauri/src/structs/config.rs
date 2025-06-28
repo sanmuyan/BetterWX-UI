@@ -1,12 +1,12 @@
 pub mod features;
 pub mod patches;
 pub mod patterns;
-pub mod regedit;
 pub mod rules;
 pub mod variables;
+pub mod paths;
 
 use crate::structs::config::features::Features;
-use crate::structs::config::rules::Rules;
+use crate::structs::config::{features::Feature, rules::Rules};
 use crate::structs::config::variables::Variables;
 
 use anyhow::{anyhow, Result};
@@ -29,12 +29,12 @@ impl Config {
     /**
      * @description: config处理的入口，对所有rule的process方法
      */
-    pub fn process(&mut self) -> Result<()> {
+    pub fn check(&mut self) -> Result<()> {
         //加载default features
-        let features: Features = serde_json::from_str(DEFAULT_FEATURE)
+        let _:Features = serde_json::from_str(DEFAULT_FEATURE)
             .map_err(|e| anyhow!("解析默认 features 失败:{}", e))?;
         // 调用所有rule的process方法
-        self.rules.process(&features)
+       self.rules.check_code()
     }
 }
 

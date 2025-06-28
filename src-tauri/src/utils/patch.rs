@@ -166,6 +166,7 @@ fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, Strin
     let captures: Vec<_> = reg.captures_iter(data).collect();
     //添加对多个地址的支持
     // 如果不允许多个地址，且找到多个 提前返回
+    println!("搜索结果:{:?}", captures);
     if captures.len() == 1 || (multiple && captures.len() > 1) {
         for capture in captures {
             if let Some(matched) = capture.get(capture.len() - 1) {

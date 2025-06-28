@@ -6,7 +6,7 @@
     </div>
     <ScrollPanel :style="style">
         <div class="m-x not-select">
-            <div v-if="parseConfigRule.installed">
+            <div v-if="parseRule.installed">
                 <template v-for="(fileInfo) in filesInfo" :key="fileInfo.num">
                     <CoexistList :fileInfo="fileInfo" :mainFileInfo="filesInfo?.[0]" :rule="baseRule"
                         :note="getNote(fileInfo.num)" @event="handleEvent" class="border-b">
@@ -17,9 +17,17 @@
         </div>
     </ScrollPanel>
     <div class="float-bottom border-t">
-        <div class="flex row items-center " style="height: 48px;padding: var(--p-tabs-tabpanel-padding);">
-            <Tag :value="installName" :severity="tagSeverity1" class="m-r"></Tag>
-            <Tag :value="`特征码版本: ${props.parseConfigRule.version}`" :severity="tagSeverity2"></Tag>
+        <div class="flex row items-center justify-between"
+            style="height: 48px;padding: var(--p-tabs-tabpanel-padding);">
+            <div>
+                <Tag :value="installName" :severity="tagSeverity1" class="m-r"></Tag>
+                <Tag :value="`特征码版本: ${parseRule.version}`" :severity="tagSeverity2" class="m-r"></Tag>
+            </div>
+            <div>
+                <div v-if="parseRule.news">
+                    <span>{{parseRule.news}}!</span>
+                </div>
+            </div>
         </div>
     </div>
     <!-- input -->
@@ -50,13 +58,14 @@ import { USE_SAVE_BASE_RULE } from '@/config/app_config.js'
 import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, codePrefixType, textToBigHex, bigHexToText } from "@/utils/utils.js"
 
 const props = defineProps({
-    parseConfigRule: { type: Object, default: {}, required: true },
+    configRule: { type: Object, default: {}, required: true },
     style: { type: Object, required: true },
     init: { type: Boolean, default: false }
 })
 
 const showToast = inject('showToast')
 const inited = ref(false)
+const parseRule = ref({})
 const baseRule = ref({})
 const filesInfo = ref([])
 const FeatureFileInfo = ref({})
@@ -67,28 +76,23 @@ const notes = ref([])
 const inputDialog = ref({})
 
 onMounted(async () => {
-    
+
 })
 
 watch(() => props.init, async (newValue) => {
     if (newValue) {
+        await nextTick()
         if (initError.value) {
             showToast(initError.value)
-            return
-        }
-        if (!props.parseConfigRule.installed) {
-            showToast(installName.value)
             return
         }
         if (!inited.value) {
             init()
             inited.value = true
         }
-        if (!props.parseConfigRule.supported) {
-            showToast(installName.value)
-        }
     }
-},{immediate:true})
+}, { immediate: true })
+
 
 
 /**
@@ -96,22 +100,28 @@ watch(() => props.init, async (newValue) => {
  */
 async function init() {
     try {
-        await nextTick()
         showLoading.value = true
-        console.log("props.parseConfigRule", props.parseConfigRule)
-        version.value = version.value || getValueByCode(props.parseConfigRule.variables, "install_version")
+        console.log("原始Rule ", props.configRule)
+        parseRule.value = await bridge.parseRule(props.configRule)
+        console.log("解析后的Rule", parseRule.value)
+        if (!parseRule.value.installed || !parseRule.value.supported) {
+            showToast(installName.value)
+            return
+        }
+        version.value = version.value || getValueByCode(parseRule.value.variables, "install_version")
         let base = false
         if (USE_SAVE_BASE_RULE) {
             //读取基址缓存
-            base = await read(props.parseConfigRule)
+            base = await read(parseRule.value)
+            console.log("取基址缓存", base)
         }
         if (!base?.version) {
-            base = await bridge.searchBaseAddress(props.parseConfigRule)
+            base = await bridge.searchBaseAddress(parseRule.value)
         }
         console.log("基址配置", base)
         let all_notpatched = base.patches.every(item => !item.patched)
         if (!all_notpatched) {
-            await bridge.removePatchesBackupFiles(props.parseConfigRule.patches)
+            await bridge.removePatchesBackupFiles(parseRule.value.patches)
             throw new Error(`备份文件无效，请尝试重装WX`)
         }
         let all_supported = base.patches.every(item => item.supported)
@@ -127,17 +137,17 @@ async function init() {
             clearAll()
         }
         FeatureFileInfo.value = await bridge.buildFeatureFileInfo(baseRule.value)
-        console.log(FeatureFileInfo.value);
+        console.log("功能区", FeatureFileInfo.value);
         filesInfo.value = await bridge.refreshFilesInfo(baseRule.value)
+        console.log("构建的filesInfo.value", filesInfo.value);
         //加载选中状态
         await getSelectAll()
-        console.log(filesInfo.value);
         //加载备注
         await getNotes()
     } catch (error) {
         console.log(error)
         initError.value = `${error}`
-        props.parseConfigRule.supported = false
+        parseRule.value.supported = false
         clearAll()
         showToast(initError.value)
     } finally {
@@ -152,8 +162,8 @@ async function init() {
  */
 async function handleEvent(payload) {
     let { code, num, status } = payload
-    let fileInfo = num == "Y" ? FeatureFileInfo.value : filesInfo.value.find(item => item.num == num) 
-    console.log(payload,fileInfo);
+    let fileInfo = num == "Y" ? FeatureFileInfo.value : filesInfo.value.find(item => item.num == num)
+    console.log(payload, fileInfo);
     let feature = fileInfo?.features.find(item => item.code == code)
     if (showLoading.value) {
         showToast("请等待上一个操作完成")
@@ -169,12 +179,7 @@ async function handleEvent(payload) {
         console.log(feature, num, method)
         switch (method) {
             case "refresh":
-                FeatureFileInfo.value = await bridge.buildFeatureFileInfo(baseRule.value)
-                console.log(FeatureFileInfo.value);
-                filesInfo.value = await bridge.refreshFilesInfo(baseRule.value)
-                //加载选中状态
-                await getSelectAll()
-                console.log(filesInfo.value);
+                await init()
                 break
             case "del":
                 await del(fileInfo)
@@ -202,7 +207,7 @@ async function handleEvent(payload) {
                 await setNote(fileInfo)
                 break
             case "select":
-                await setSelectAll(status,num)
+                await setSelectAll(status, num)
                 break
             case "select_all":
                 await setSelectAll(status)
@@ -210,7 +215,7 @@ async function handleEvent(payload) {
             case "open_all":
                 await openAll(true)
                 break
-             case "close":
+            case "close":
                 await bridge.closeApps([feature.target])
                 break
             case "close_all":
@@ -257,14 +262,14 @@ async function openAll(status) {
  * @description: 设置全选反选
  * @return {*}
  */
-async function setSelectAll(status,num) {
+async function setSelectAll(status, num) {
     let selectedItems = []
     filesInfo.value.forEach(item => {
         item.features.forEach(feature => {
             if (feature.code == "select") {
                 if (num) {
-                    feature.selected = num == "Y" || item.num == num ? status : feature.selected 
-                }else{
+                    feature.selected = num == "Y" || item.num == num ? status : feature.selected
+                } else {
                     feature.selected = status
                 }
                 if (feature.selected) {
@@ -284,12 +289,12 @@ async function setSelectAll(status,num) {
  * @description: 设置全选反选
  * @return {*}
  */
- async function getSelectAll() {
-    let storeNotes = await read({
+async function getSelectAll() {
+    let storeSelecteds = await read({
         code: baseRule.value.code,
         selected: []
     })
-    let selected = storeNotes?.selected || []
+    let selected = storeSelecteds?.selected || []
     filesInfo.value.forEach(item => {
         item.features.forEach(feature => {
             if (feature.code == "select") {
@@ -313,7 +318,7 @@ async function getNotes() {
         code: baseRule.value.code,
         notes: []
     })
-    notes.value = storeNotes?.notes || []
+    notes.value = Array.isArray(storeNotes?.notes) && storeNotes?.notes ?storeNotes?.notes : []
     console.log("加载备注", notes.value);
 }
 
@@ -322,7 +327,7 @@ async function getNotes() {
  * @return {*}
  */
 async function setNote(fileInfo) {
-    let index = notes.value.findIndex(item => item.num == fileInfo.num)
+    let index = notes.value?.findIndex(item => item.num == fileInfo.num)
     let text = notes.value?.[index]?.note || ""
     // 打开对话框并等待用户输入
     console.log();
@@ -520,12 +525,12 @@ async function makeCoexist(feature) {
     }
     // 构建共存文件信息
     let fileInfo = await bridge.buildFileInfoByNum(baseRule.value, num)
-    console.log("fileInfo",fileInfo);
+    console.log("fileInfo", fileInfo);
     //从主程序 feature 切换到当前共存文件 feature
     let mainFileInfo = filesInfo.value.find(fileInfo => fileInfo.ismain)
     let nowFeature = mainFileInfo.features.find(item => item.code == feature.code)
-    console.log("nowFeature",nowFeature);
-    if(!nowFeature){
+    console.log("nowFeature", nowFeature);
+    if (!nowFeature) {
         throw new Error(`找不到 ${feature.name || feature.code} 对应的功能数据`)
     }
     // //同步主程序状态
@@ -541,16 +546,16 @@ async function makeCoexist(feature) {
     //是否存在
     fileInfo.features.sort((a, b) => a.index - b.index)
     //设置默认select为true
-    fileInfo.features.map(item=>{
-        if(item.code == "select"){ 
+    fileInfo.features.map(item => {
+        if (item.code == "select") {
             item.selected = true
         }
-    }) 
+    })
     if (!filesInfo.value.find(item => item.num == num)) {
         filesInfo.value.push(fileInfo)
         filesInfo.value.sort((a, b) => a.index - b.index)
     }
-    setSelectAll(true,num)
+    setSelectAll(true, num)
 }
 
 /**
@@ -621,17 +626,17 @@ function inputConfirm() {
  * @return {*}
  */
 const getNote = computed(() => (num) => {
-    let note = notes.value.find(item => item.num == num)?.note || ""
+    let note = notes.value?.find(item => item.num == num)?.note || ""
     return note
 })
 
 const installName = computed(() => {
-    if (!props.parseConfigRule.installed) {
-        return `未安装: ${props.parseConfigRule.name || props.parseConfigRule.code}`
-    } else if (!props.parseConfigRule.supported) {
-        return `不支持此版本: ${version.value}`
+    if (!parseRule.value.installed) {
+        return `未安装 ${parseRule.value.name || parseRule.value.code}`
+    } else if (!parseRule.value.supported) {
+        return `不支持此版本 ${version.value}`
     } else {
-        return `安装的版本: ${version.value}`
+        return `安装的版本 ${version.value}`
     }
 })
 
@@ -641,7 +646,7 @@ const installName = computed(() => {
  * @return {*}
  */
 const isValid = computed(() => {
-    return props.parseConfigRule.installed && props.parseConfigRule.supported
+    return parseRule.value.installed && parseRule.value.supported
 })
 
 /**
@@ -659,7 +664,7 @@ const tagSeverity1 = computed(() => {
  * @return {*}
  */
 const tagSeverity2 = computed(() => {
-    return !props.parseConfigRule.supported ? "danger" : "success"
+    return !parseRule.value.supported ? "danger" : "success"
 })
 
 

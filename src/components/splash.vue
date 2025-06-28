@@ -94,13 +94,12 @@ async function closeDialog() {
         await addMsg("正在检查配置文件更新")
         let config = await loadConfig()
         // 处理配置文件
-
-        let parseConfig = await bridge.parseConfig(config)
-        parseConfig.rules.sort((a, b) => a.index - b.index)
+        config = await bridge.checkConfig(config) 
+        config.rules.sort((a, b) => a.index - b.index)
         await addMsg(`配置文件 ${config.version} 加载完成`)
         await addMsg("软件初始化成功", SPLASH_SUCCESS_DELAY)
         showLoading.value = false
-        loaded({ parseConfig, updateInfo: updateInfo.value })
+        loaded({ config, updateInfo: updateInfo.value })
     } catch (error) {
         console.error(error)
         await addMsg(`软件初始化失败:${error}`)

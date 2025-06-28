@@ -3,18 +3,27 @@ use crate::structs::config::rules::Rule;
 use crate::structs::config::Config;
 use crate::structs::files_info::FilesInfo;
 
-use crate::patch;
-use crate::win;
 use anyhow::Ok;
 use anyhow::Result;
 
+use crate::utils::file;
+use crate::utils::patch;
 /**
  * @description: 预处理解析 config
  * @return {*}
  */
-pub fn process_config(config: &mut Config) -> Result<()> {
-    config.process()
+pub fn check_config(config: &mut Config) -> Result<()> {
+    config.check()
 }
+
+/**
+ * @description: 深度处理解析 rule
+ * @return {*}
+ */
+pub fn process_rule(rule: &mut Rule) -> Result<()> {
+    rule.process_rule()
+}
+
 
 /**
  * @description: 搜索基址
@@ -25,7 +34,7 @@ pub fn search_base_address(rule: &mut Rule) -> Result<()> {
     let mut file_info = rule.build_file_info_by_num(-1)?;
     println!("----------------------------------------file_info: {:?}", file_info.usedfiles);
     //备份文件
-    win::backup_files(file_info.usedfiles)?;
+    file::backup_files(file_info.usedfiles)?;
     //读取文件补丁信息
     patch::read_patches(&mut file_info.patches)?;
     //替换 config.rule 的 patches 为 base_patches，用于后续 build_file_info_by_num 时，使用 base_patches 来构建文件信息

@@ -1,14 +1,14 @@
 mod app;
 mod error;
-mod patch;
 mod structs;
-mod win;
+mod utils;
 
 use crate::error::MyError;
 use crate::structs::config::patches::Patches;
 use crate::structs::config::rules::Rule;
 use crate::structs::config::Config;
 use crate::structs::files_info::{FileInfo, FilesInfo};
+use crate::utils::{file,process};
 use tauri::Manager;
 
 use anyhow::Result;
@@ -21,7 +21,7 @@ use tauri_plugin_window_state::{StateFlags, WindowExt};
  */
 #[tauri::command(async)]
 fn is_files_exists(files: Vec<String>) -> bool {
-    win::is_files_exists(&files)
+    file::is_files_exists(&files)
 }
 
 /**
@@ -29,7 +29,7 @@ fn is_files_exists(files: Vec<String>) -> bool {
  */
 #[tauri::command(async)]
 fn del_files(files: Vec<String>) -> Result<(), MyError> {
-    Ok(win::del_files(files)?)
+    Ok(file::del_files(files)?)
 }
 
 /**
@@ -37,7 +37,7 @@ fn del_files(files: Vec<String>) -> Result<(), MyError> {
  */
 #[tauri::command(async)]
 fn backup_files(files: Vec<String>) -> Result<(), MyError> {
-    Ok(win::backup_files(files)?)
+    Ok(file::backup_files(files)?)
 }
 
 /**
@@ -45,7 +45,7 @@ fn backup_files(files: Vec<String>) -> Result<(), MyError> {
  */
 #[tauri::command(async)]
 fn run_app(file: &str) -> Result<(), MyError> {
-    Ok(win::run_app(file)?)
+    Ok(process::run_app(file)?)
 }
 
 /**
@@ -53,7 +53,7 @@ fn run_app(file: &str) -> Result<(), MyError> {
  */
 #[tauri::command(async)]
 fn open_url(url: &str) -> Result<(), MyError> {
-    Ok(win::open_url(url)?)
+    Ok(process::open_url(url)?)
 }
 
 /**
@@ -61,17 +61,27 @@ fn open_url(url: &str) -> Result<(), MyError> {
  */
 #[tauri::command(async)]
 fn open_folder(folder: &str) -> Result<(), MyError> {
-    Ok(win::open_folder(folder)?)
+    Ok(process::open_folder(folder)?)
 }
 
 /**
  * @description: 解析 config 规则
  */
 #[tauri::command(async)]
-fn parse_config(config: Config) -> Result<Config, MyError> {
+fn check_config(config: Config) -> Result<Config, MyError> {
     let mut config = config;
-    app::process_config(&mut config)?;
+    app::check_config(&mut config)?;
     Ok(config)
+}
+
+/**
+ * @description: 解析 rule 规则
+ */
+#[tauri::command(async)]
+fn parse_rule(rule: Rule) -> Result<Rule, MyError> {
+    let mut rule: Rule = rule;
+    app::process_rule(&mut rule)?;
+    Ok(rule)
 }
 
 /**
@@ -110,7 +120,7 @@ fn apply_patch(patches: Patches) -> Result<Patches, MyError> {
 fn remove_patches_backup_files(patches: Patches) -> Result<(), MyError> {
     let files = patches.get_bak_files();
     println!("remove_patches_backup_files    {:?}", files);
-    Ok(win::del_files(files)?)
+    Ok(file::del_files(files)?)
 }
 
 /*
@@ -135,7 +145,7 @@ fn build_feature_file_info(rule: Rule) -> Result<FileInfo, MyError> {
 */
 #[tauri::command(async)]
 fn run_apps(files: Vec<String>, login: bool, close: bool) -> Result<(), MyError> {
-    Ok(win::run_apps(&files, login, close)?)
+    Ok(process::run_apps(&files, login, close)?)
 }
 
 /*
@@ -143,7 +153,7 @@ fn run_apps(files: Vec<String>, login: bool, close: bool) -> Result<(), MyError>
 */
 #[tauri::command(async)]
 fn close_apps(files: Vec<String>) -> Result<(), MyError> {
-    Ok(win::close_apps(&files)?)
+    Ok(process::close_apps(&files)?)
 }
 
 pub fn run() {
@@ -162,7 +172,8 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            parse_config,
+            check_config,
+            parse_rule,
             search_base_address,
             refresh_files_info,
             apply_patch,
