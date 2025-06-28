@@ -106,6 +106,7 @@ async function init() {
         console.log("解析后的Rule", parseRule.value)
         version.value = getValueByCode(parseRule.value.variables,"install_version")
         if (!parseRule.value.installed || !parseRule.value.supported) {
+            initError.value = toastName.value
             showToast(toastName.value)
             return
         }
@@ -202,7 +203,10 @@ async function handleEvent(payload) {
                 break
             case "clear":
                 await clearAll()
+                initError.value = ""
                 baseRule.value = {}
+                filesInfo.value = {}
+                inited.value = false
                 break
             case "note":
                 await setNote(fileInfo)
