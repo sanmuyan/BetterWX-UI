@@ -103,7 +103,7 @@ pub fn get_file_version_retry(file: &str) -> Result<String> {
             return ver;
         }
     }
-    Err(anyhow!("获取版本号失败"))
+    Err(anyhow!("获取文件版本号失败，文件：{file}"))
 }
 
 /**

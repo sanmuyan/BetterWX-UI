@@ -1,12 +1,14 @@
-use crate::structs::config::paths::Paths;
 use crate::structs::config::features::Features;
 use crate::structs::config::patches::Patches;
+use crate::structs::config::paths::Paths;
 use crate::structs::config::variables::{Variable, Variables};
-use crate::structs::config::{GetCode, DEFAULT_FEATURE};
 use crate::structs::config::{get_index_name, get_index_num, ismain, str_to_hex};
+use crate::structs::config::{GetCode, DEFAULT_FEATURE};
 use crate::structs::files_info::{FileInfo, FilesInfo};
 //use crate::structs::config::{get_item_by_code, get_mut_item_by_code, ismain, str_to_hex};
-use crate::utils::file::{del_files, filter_files_is_exists};
+use crate::utils::file::{
+    del_files, filter_files_is_exists, get_file_version, get_file_version_retry,
+};
 use crate::utils::patch;
 
 use anyhow::{anyhow, Result};
@@ -55,7 +57,7 @@ pub struct Rule {
     pub supported: bool, //是否支持
     #[serde(default)]
     pub installed: bool, //是否安装
-    pub paths:Paths, //路径配置
+    pub paths: Paths,    //路径配置
     pub variables: Variables, //变量配置
     pub patches: Patches, //补丁配置
     pub features: Features, //功能配置
@@ -138,13 +140,25 @@ impl Rule {
             0
         };
         //遍历 -1 到 10，构建文件信息, -1 为主程序
+        let main_file_info = self.build_file_info_by_num(-1)?;
+        let mut main_vers = Vec::new();
+        for file in &main_file_info.usedfiles {
+            main_vers.push(get_file_version_retry(file)?);
+        }
         for index in -1..max {
             let file_info = self.build_file_info_by_num(index)?;
             //如果文件不存在，则跳过
             let (all_exists, filter_files) = filter_files_is_exists(&file_info.usedfiles);
             //避免旧版本共存文件对版本更新后影响
+            let mut all_match = true;
+            if all_exists {
+                for file in &file_info.usedfiles {
+                    let ver = get_file_version_retry(file)?;
+                    all_match = all_match && main_vers.contains(&ver);
+                }
+            }
             //如果没有全部存在，并且不是主程序，则删除文件
-            if !all_exists && index != -1 {
+            if (!all_exists || !all_match) && index != -1 {
                 let _ = del_files(filter_files);
             } else {
                 //否则添加到files_info中
