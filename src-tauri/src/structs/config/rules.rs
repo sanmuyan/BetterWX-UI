@@ -90,7 +90,7 @@ impl Rule {
             .process(&self.variables, &mut self.patches, Some(features))?;
         self.patches.retain_patches_by_featrues(&self.features)?;
         self.supported = self.patches.0.iter().all(|patch| patch.supported);
-        self.installed = true;
+        self.installed = self.variables.get_value("install_version").is_some();
         Ok(())
     }
 

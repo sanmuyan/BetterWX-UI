@@ -104,11 +104,11 @@ async function init() {
         console.log("原始Rule ", props.configRule)
         parseRule.value = await bridge.parseRule(props.configRule)
         console.log("解析后的Rule", parseRule.value)
+        version.value = getValueByCode(parseRule.value.variables,"install_version")
         if (!parseRule.value.installed || !parseRule.value.supported) {
-            showToast(installName.value)
+            showToast(toastName.value)
             return
         }
-        version.value = version.value || getValueByCode(parseRule.value.variables, "install_version")
         let base = false
         if (USE_SAVE_BASE_RULE) {
             //读取基址缓存
@@ -132,6 +132,7 @@ async function init() {
                 await save(baseRule.value)
             }
         } else {
+            baseRule.value.supported = false
             showToast(`部分或全部功能不支持，已禁用`)
             //清除缓存
             clearAll()
@@ -640,13 +641,24 @@ const installName = computed(() => {
     }
 })
 
+const toastName = computed(() => {
+    let name = `${parseRule.value.name || parseRule.value.code}`
+    if (!parseRule.value.installed) {
+        return `未检测到： ${name}，请尝试放到 ${name} 目录内运行，或重新安装官方客服端`
+    } else if (!parseRule.value.supported) {
+        return `不支持此版本： ${version.value}，请尝试重新安装或安装 ${parseRule.value.version} 版本`
+    } else {
+        return `安装的版本： ${version.value}`
+    }
+})
+
 /**
  * @description: 是否安装
  * @param {*} computed
  * @return {*}
  */
 const isValid = computed(() => {
-    return parseRule.value.installed && parseRule.value.supported
+    return baseRule.value.installed && baseRule.value.supported
 })
 
 /**
@@ -664,7 +676,7 @@ const tagSeverity1 = computed(() => {
  * @return {*}
  */
 const tagSeverity2 = computed(() => {
-    return !parseRule.value.supported ? "danger" : "success"
+    return !baseRule.value.supported ? "danger" : "success"
 })
 
 
