@@ -632,11 +632,11 @@ const getNote = computed(() => (num) => {
 
 const installName = computed(() => {
     if (!parseRule.value.installed) {
-        return `未安装 ${parseRule.value.name || parseRule.value.code}`
+        return `未检测到： ${parseRule.value.name || parseRule.value.code}`
     } else if (!parseRule.value.supported) {
-        return `不支持此版本 ${version.value}`
+        return `不支持此版本： ${version.value}`
     } else {
-        return `安装的版本 ${version.value}`
+        return `安装的版本： ${version.value}`
     }
 })
 
