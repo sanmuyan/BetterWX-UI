@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use known_folders::{get_known_folder_path, KnownFolder};
 use std::fs;
 use std::path::Path;
 use windows::core::Interface;
@@ -11,7 +12,6 @@ use windows::Win32::System::Com::{
     COINIT_APARTMENTTHREADED,
 };
 use windows::Win32::UI::Shell::IShellLinkW;
-
 /**
  * @description: 检查文件是否存在
  * @param path 文件路径
@@ -158,9 +158,13 @@ pub fn create_shortcut_to_desktop(
     shortcut_name: &str,
     args: Option<&str>,
 ) -> Result<()> {
-    let desktop_path = std::env::var("USERPROFILE").map_err(|_| anyhow!("创建快捷方式失败，无法获取用户目录"))?;
-    let shortcut_path = format!("{}\\Desktop\\{}.lnk", desktop_path, shortcut_name);
-    create_shortcut(&exe_path,&shortcut_path, args).map_err(|e| anyhow!("创建快捷方式失败，{}",e))
+    let desktop_path = get_known_folder_path(KnownFolder::Desktop)
+        .ok_or_else(|| anyhow!("创建快捷方式失败，无法获取桌面路径"))?
+        .to_str()
+        .ok_or_else(|| anyhow!("创建快捷方式失败，桌面路径包含无效字符"))?
+        .to_string();
+    let shortcut_path = format!("{}\\{}.lnk", desktop_path, shortcut_name);
+    create_shortcut(&exe_path, &shortcut_path, args).map_err(|e| anyhow!("创建快捷方式失败，{}", e))
 }
 
 const CLSID_SHELLLINK: GUID = GUID::from_values(

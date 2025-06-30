@@ -573,9 +573,11 @@ async function makeCoexist(feature) {
  */
 async function createLnk(fileInfo, feature) {
     let name = props.configRule.name || props.configRule.code
-    let suffix_name = fileInfo.ismain?"":"#"+fileInfo.num
+    let note = notes.value.find(item => item.num == fileInfo.num)?.note || ""
+    let suffix_name = note ? note : fileInfo.ismain ? "" : fileInfo.num
+    suffix_name = suffix_name ? "#" + suffix_name : ""
     name = name + suffix_name
-    await bridge.createShortcutToDesktop(feature.target,name)
+    await bridge.createShortcutToDesktop(feature.target, name)
 }
 
 
