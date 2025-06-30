@@ -25,7 +25,7 @@
             </div>
             <div>
                 <div v-if="parseRule.news">
-                    <span>{{parseRule.news}}!</span>
+                    <span>{{ parseRule.news }}!</span>
                 </div>
             </div>
         </div>
@@ -104,7 +104,7 @@ async function init() {
         console.log("原始Rule ", props.configRule)
         parseRule.value = await bridge.parseRule(props.configRule)
         console.log("解析后的Rule", parseRule.value)
-        version.value = getValueByCode(parseRule.value.variables,"install_version")
+        version.value = getValueByCode(parseRule.value.variables, "install_version")
         if (!parseRule.value.installed || !parseRule.value.supported) {
             initError.value = toastName.value
             showToast(toastName.value)
@@ -187,7 +187,7 @@ async function handleEvent(payload) {
                 await del(fileInfo)
                 break
             case "open":
-                await bridge.runApps([feature.target], false, false)
+                await bridge.runApp(feature.target)
                 break
             case "floder":
                 await bridge.openFolder(feature.target)
@@ -225,6 +225,9 @@ async function handleEvent(payload) {
                 break
             case "close_all":
                 await openAll(false)
+                break
+            case "lnk":
+                await createLnk(fileInfo, feature)
                 break
             default:
                 let name = feature.name || method
@@ -323,7 +326,7 @@ async function getNotes() {
         code: baseRule.value.code,
         notes: []
     })
-    notes.value = Array.isArray(storeNotes?.notes) && storeNotes?.notes ?storeNotes?.notes : []
+    notes.value = Array.isArray(storeNotes?.notes) && storeNotes?.notes ? storeNotes?.notes : []
     console.log("加载备注", notes.value);
 }
 
@@ -562,6 +565,19 @@ async function makeCoexist(feature) {
     }
     setSelectAll(true, num)
 }
+
+/**
+ * 创建快捷方式
+ * @param fileInfo 
+ * @param feature 
+ */
+async function createLnk(fileInfo, feature) {
+    let name = props.configRule.name || props.configRule.code
+    let suffix_name = fileInfo.ismain?"":"#"+fileInfo.num
+    name = name + suffix_name
+    await bridge.createShortcutToDesktop(feature.target,name)
+}
+
 
 /**
  * @description: 获取输入值

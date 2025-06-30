@@ -1,10 +1,16 @@
 use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::Path;
-use windows::core::{w, BOOL, HSTRING, PCWSTR};
+use windows::core::Interface;
+use windows::core::{w, BOOL, GUID, HSTRING, PCWSTR};
 use windows::Win32::Storage::FileSystem::{
     GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW, VS_FIXEDFILEINFO,
 };
+use windows::Win32::System::Com::{
+    CoCreateInstance, CoInitializeEx, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER,
+    COINIT_APARTMENTTHREADED,
+};
+use windows::Win32::UI::Shell::IShellLinkW;
 
 /**
  * @description: 检查文件是否存在
@@ -142,4 +148,54 @@ pub fn get_file_version(file: &str) -> Result<String> {
     let build = (fixed_info.dwFileVersionLS >> 16) as u16;
     let revision = (fixed_info.dwFileVersionLS & 0xFFFF) as u16;
     Ok(format!("{}.{}.{}.{}", major, minor, build, revision))
+}
+
+/**
+ * @description: 创建快捷方式到桌面
+ */
+pub fn create_shortcut_to_desktop(
+    exe_path: &str,
+    shortcut_name: &str,
+    args: Option<&str>,
+) -> Result<()> {
+    let desktop_path = std::env::var("USERPROFILE").map_err(|_| anyhow!("创建快捷方式失败，无法获取用户目录"))?;
+    let shortcut_path = format!("{}\\Desktop\\{}.lnk", desktop_path, shortcut_name);
+    create_shortcut(&exe_path,&shortcut_path, args).map_err(|e| anyhow!("创建快捷方式失败，{}",e))
+}
+
+const CLSID_SHELLLINK: GUID = GUID::from_values(
+    0x00021401,
+    0x0000,
+    0x0000,
+    [0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
+);
+
+/**
+ * @description: 创建快捷方式到桌面
+ */
+pub fn create_shortcut(exe_path: &str, shortcut_path: &str, args: Option<&str>) -> Result<()> {
+    unsafe {
+        // 初始化COM库
+        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        // 创建IShellLink对象
+        let shell_link: IShellLinkW =
+            CoCreateInstance(&CLSID_SHELLLINK, None, CLSCTX_INPROC_SERVER)?;
+        // 设置快捷方式属性
+        shell_link.SetPath(PCWSTR(HSTRING::from(exe_path).as_ptr()))?;
+        if let Some(arguments) = args {
+            shell_link.SetArguments(PCWSTR(HSTRING::from(arguments).as_ptr()))?;
+        }
+        // 获取工作目录
+        let work_dir = Path::new(exe_path)
+            .parent()
+            .and_then(|p| p.to_str())
+            .ok_or(anyhow!("无法获取可执行文件在所在目录"))?;
+        shell_link.SetWorkingDirectory(PCWSTR(HSTRING::from(work_dir).as_ptr()))?;
+        // 保存快捷方式
+        let persist_file: IPersistFile = shell_link.cast()?;
+        persist_file.Save(PCWSTR(HSTRING::from(shortcut_path).as_ptr()), true)?;
+        // 释放COM库
+        CoUninitialize();
+    }
+    Ok(())
 }

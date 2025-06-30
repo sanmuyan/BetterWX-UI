@@ -137,3 +137,14 @@ export async function runApps(files, login, close) {
 export async function closeApps(files) {
     return await invoke('close_apps', { files })
 }
+
+/**
+ * @description: 创建快捷方式
+ * @returns 
+ */
+export async function createShortcutToDesktop(exe,name,args) {
+    return await invoke('create_shortcut_to_desktop', { exe,name,args })
+}
+
+
+

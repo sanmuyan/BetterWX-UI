@@ -121,7 +121,7 @@ pub fn run_apps(paths: &[String], auto_login: bool, close_first: bool) -> Result
     }
     if close_first {
         let _ = close_apps(&paths);
-        thread::sleep(time::Duration::from_millis(1000));
+        thread::sleep(time::Duration::from_millis(200));
     }
     if auto_login {
         let (hwnds, missing) = run_apps_and_check(&paths)?;
@@ -221,7 +221,7 @@ pub fn run_apps_and_check(paths: &[String]) -> Result<(Vec<(u32, HWND)>, Vec<Str
             }
         }
     }
-    thread::sleep(time::Duration::from_millis(1000));
+    thread::sleep(time::Duration::from_millis(2000));
     let hwnds = get_hwnds_by_pids(pids)?;
     let missing_apps = check_missing_processes(&process_infos, &hwnds);
     Ok((hwnds, missing_apps))

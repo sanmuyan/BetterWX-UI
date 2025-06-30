@@ -8,7 +8,7 @@ use crate::structs::config::patches::Patches;
 use crate::structs::config::rules::Rule;
 use crate::structs::config::Config;
 use crate::structs::files_info::{FileInfo, FilesInfo};
-use crate::utils::{file,process};
+use crate::utils::{file, process};
 use tauri::Manager;
 
 use anyhow::Result;
@@ -156,6 +156,14 @@ fn close_apps(files: Vec<String>) -> Result<(), MyError> {
     Ok(process::close_apps(&files)?)
 }
 
+/*
+* @description: 创建快捷方式
+*/
+#[tauri::command(async)]
+fn create_shortcut_to_desktop(exe: &str, name: &str, args: Option<&str>) -> Result<(), MyError> {
+    Ok(file::create_shortcut_to_desktop(&exe, &name, args)?)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::new().build())
@@ -187,7 +195,8 @@ pub fn run() {
             run_apps,
             close_apps,
             build_feature_file_info,
-            remove_patches_backup_files
+            remove_patches_backup_files,
+            create_shortcut_to_desktop
         ])
         .setup(|app| {
             let main_window = app.get_webview_window("main").unwrap();
@@ -196,7 +205,7 @@ pub fn run() {
             // 获取窗口当前尺寸
             if let Ok(size) = main_window.inner_size() {
                 const MIN_WIDTH: u32 = 720;
-                const MIN_HEIGHT: u32 =  360;
+                const MIN_HEIGHT: u32 = 360;
                 // 如果窗口尺寸小于最小值，则设置为最小值
                 if size.width < MIN_WIDTH || size.height < MIN_HEIGHT {
                     let size = tauri::Size::Logical(tauri::LogicalSize {
