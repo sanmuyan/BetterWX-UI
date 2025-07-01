@@ -100,6 +100,7 @@ const isShow = computed(() => (feature, style, inRight) => {
         case "select_all":
             filterList = ["select"]
             break
+        case "lnk_all":
         case "open_all":
         case "close_all":
             filterList = ["select", "open"]

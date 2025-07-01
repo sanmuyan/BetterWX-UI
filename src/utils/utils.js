@@ -4,7 +4,7 @@
  * @param {string} version2 3.0.0
  * @returns {number} 1: version1 > version2, -1: version1 < version2, 0: 相等
  */
-function compareVersion(version1, version2) {
+export function compareVersion(version1, version2) {
     if (!version1 || !version2) throw new Error("版本号不能为空")
     const v1 = version1.split(".").map(Number)
     const v2 = version2.split(".").map(Number)
@@ -23,7 +23,7 @@ function compareVersion(version1, version2) {
  * @param {number} num 
  * @returns u8
  */
-function num2u8(num) {
+export function num2u8(num) {
     // 将数字转换为字符串
     const str = num.toString()
     // 使用TextEncoder将字符串编码为UTF-8的Uint8Array
@@ -38,7 +38,7 @@ function num2u8(num) {
  * @param {number} num 
  * @returns u8
  */
-function ismain(num) {
+export function ismain(num) {
     return num.toString().toLowerCase() === "z"
 }
 
@@ -48,7 +48,7 @@ function ismain(num) {
  * @param {string} str2 - 包含通配符的字符串
  * @return {string} - 替换后的字符串
  */
-function fixWildcards(str1, str2) {
+export function fixWildcards(str1, str2) {
     // 将两个字符串转换为数组以便逐个字符处理
     const arr1 = str1.split('')
     const arr2 = str2.split('')
@@ -69,7 +69,7 @@ function fixWildcards(str1, str2) {
  * @param {*} variables 提供替换变量的值
  * @return {*}
  */
-function replaceVariables(json, variables, preprocessor) {
+export function replaceVariables(json, variables, preprocessor) {
     // 递归遍历对象
     function traverse(obj) {
         for (let key in obj) {
@@ -97,7 +97,7 @@ function replaceVariables(json, variables, preprocessor) {
  * @param {*} text 
  * @returns 
  */
-function fixCodePrefix(code) {
+export function fixCodePrefix(code) {
     return code.replace(/^[!+-]+/, '');
 }
 
@@ -106,7 +106,7 @@ function fixCodePrefix(code) {
  * @param {*} str 
  * @returns 
  */
-function codePrefixType(code) {
+export function codePrefixType(code) {
     if (!code) return 0;
     const firstChar = code.charAt(0);
     if (firstChar === '!') return 1;
@@ -120,7 +120,7 @@ function codePrefixType(code) {
  * @param {*} code
  * @param {*} status
  */
-function getStatusBycCdePrefix(code, status) {
+export function getStatusBycCdePrefix(code, status) {
     switch (codePrefixType(code)) {
         case 0: return status;
         case 1: return !status;
@@ -134,7 +134,7 @@ function getStatusBycCdePrefix(code, status) {
  * @param {*} text 
  * @returns 
  */
-function textToBigHex(text, pushEnd) {
+export function textToBigHex(text, pushEnd) {
     // 创建TextEncoder将字符串转为Uint8Array
     const encoder = new TextEncoder();
     const bytes = encoder.encode(text);
@@ -156,7 +156,7 @@ function textToBigHex(text, pushEnd) {
  * @param {string} hexStr 十六进制字符串
  * @returns {string} 解码后的文本
  */
-function bigHexToText(hexStr) {
+export function bigHexToText(hexStr) {
     // 统一转为大写处理（不区分大小写）
     hexStr = hexStr.toUpperCase();
     // 将十六进制字符串转为字节数组
@@ -179,7 +179,7 @@ function bigHexToText(hexStr) {
  * @param {number} ms - 延迟时间，单位毫秒
  * @returns {Promise} - 在指定时间后resolve的Promise
  */
-function sleep(ms) {
+export function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
@@ -188,7 +188,7 @@ function sleep(ms) {
  * @param {*} value - 要判断的值
  * @returns {boolean} - 如果值为空返回true，否则返回false
  */
-function isEmpty(value) {
+export function isEmpty(value) {
     if (value === null || value === undefined) {
         return true
     }
@@ -207,9 +207,25 @@ function isEmpty(value) {
  * @param {*} code 
  * @returns 
  */
-function getValueByCode(variables, code) {
+export function getValueByCode(variables, code) {
     return variables?.find(variable => variable.code == code)?.value
 }
 
+export function getBasename(path, ext) {
+    return path.split(/[\\/]/).pop().replace(ext, "");
+}
 
-export { compareVersion, num2u8, ismain, fixWildcards, replaceVariables, sleep, isEmpty, getValueByCode, codePrefixType,fixCodePrefix, getStatusBycCdePrefix, bigHexToText, textToBigHex }
+
+export function getExtname(path) {
+    let basename = getBasename(path)
+    return basename.replace(getBasename(path).split(".")[0], "");
+}
+
+export function getDirname(path) {
+    let list = path.split("\\")
+    list.pop()
+    return list.join("\\")
+}
+
+
+

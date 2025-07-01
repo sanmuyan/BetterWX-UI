@@ -55,8 +55,7 @@ import Loading from "@/components/loading.vue"
 import * as bridge from "@/utils/bridge.js"
 import { read, save, clearAll } from "@/utils/store.js"
 import { USE_SAVE_BASE_RULE } from '@/config/app_config.js'
-import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, codePrefixType, textToBigHex, bigHexToText } from "@/utils/utils.js"
-
+import { getValueByCode, fixCodePrefix, getStatusBycCdePrefix, codePrefixType, textToBigHex, bigHexToText, getBasename, getExtname,getDirname } from "@/utils/utils.js"
 const props = defineProps({
     configRule: { type: Object, default: {}, required: true },
     style: { type: Object, required: true },
@@ -228,6 +227,9 @@ async function handleEvent(payload) {
                 break
             case "lnk":
                 await createLnk(fileInfo, feature)
+                break
+            case "lnk_all":
+                await createLnkAll()
                 break
             default:
                 let name = feature.name || method
@@ -580,6 +582,33 @@ async function createLnk(fileInfo, feature) {
     await bridge.createShortcutToDesktop(feature.target, name)
 }
 
+/**
+ * 创建快捷方式
+ * @param fileInfo 
+ * @param feature 
+ */
+async function createLnkAll() {
+    let code = props.configRule.code
+    let name = props.configRule.name || props.configRule.code
+    let filesInfoFilter = filesInfo.value.filter(item => item.features.find(feature => feature.code == "select" && feature.selected))
+    let files = []
+    for (let fileInfo of filesInfoFilter) {
+        let feature = fileInfo.features.find(item => item.code == "open")
+        files.push(getBasename(feature.target,getExtname(feature.target)))
+    }
+    if (files.length == 0) {
+        showToast("请选择需要一键启动的程序")
+        return
+    }
+    let mainFileInfo = filesInfo.value.find(item => item.ismain)
+    let mainFeature = mainFileInfo.features.find(item => item.code == "open")
+    let icon = mainFeature.target
+    let path = getDirname(mainFeature.target)
+    let args = `code="${code}" name="${name}" path="${path}" list="${files}"`
+    let target = await bridge.getRuntimeFile()
+    name = `${name}#一键启动`
+    await bridge.createShortcutToDesktop(target, name,icon,args)
+}
 
 /**
  * @description: 获取输入值

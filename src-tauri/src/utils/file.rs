@@ -1,3 +1,4 @@
+#[warn(dead_code)]
 use anyhow::{anyhow, Result};
 use known_folders::{get_known_folder_path, KnownFolder};
 use std::fs;
@@ -150,12 +151,62 @@ pub fn get_file_version(file: &str) -> Result<String> {
     Ok(format!("{}.{}.{}.{}", major, minor, build, revision))
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct ShotCutArgs {
+    pub code: String,
+    pub name: String,
+    pub path: String,
+    pub list: String,
+}
+
+impl ShotCutArgs {
+    pub fn new(code: impl Into<String>, name: impl Into<String>, path: impl Into<String>, list: impl Into<String>) -> Self {
+        Self {
+            code: code.into(),
+            name: name.into(),
+            path: path.into(),
+            list: list.into(),
+        }
+    }
+
+    pub fn to_cmd_args(&self) -> String {
+        format!(
+            "code=\"{}\" name=\"{}\" path=\"{}\" list=\"{}\"",
+            self.code, self.name, self.path, self.list
+        )
+    }
+
+    pub fn check(&self)->bool{
+        self.code.len()>0 && self.name.len()>0 && self.path.len()>0 && self.list.len()>0
+    }
+}
+
+impl From<Vec<String>> for ShotCutArgs {
+    fn from(args: Vec<String>) -> Self {
+        let mut result = Self::default();
+        
+        for arg in args {
+            if let Some((key, value)) = arg.split_once('=') {
+                match key {
+                    "code" => result.code = value.to_string(),
+                    "name" => result.name = value.to_string(),
+                    "path" => result.path = value.to_string(),
+                    "list" => result.list = value.to_string(),
+                    _ => continue,
+                }
+            }
+        }
+        
+        result
+    }
+}
 /**
  * @description: 创建快捷方式到桌面
  */
 pub fn create_shortcut_to_desktop(
     exe_path: &str,
     shortcut_name: &str,
+    icon: Option<&str>,
     args: Option<&str>,
 ) -> Result<()> {
     let desktop_path = get_known_folder_path(KnownFolder::Desktop)
@@ -164,7 +215,8 @@ pub fn create_shortcut_to_desktop(
         .ok_or_else(|| anyhow!("创建快捷方式失败，桌面路径包含无效字符"))?
         .to_string();
     let shortcut_path = format!("{}\\{}.lnk", desktop_path, shortcut_name);
-    create_shortcut(&exe_path, &shortcut_path, args).map_err(|e| anyhow!("创建快捷方式失败，{}", e))
+    create_shortcut(&exe_path, &shortcut_path, icon, args)
+        .map_err(|e| anyhow!("创建快捷方式失败，{}", e))
 }
 
 const CLSID_SHELLLINK: GUID = GUID::from_values(
@@ -177,7 +229,12 @@ const CLSID_SHELLLINK: GUID = GUID::from_values(
 /**
  * @description: 创建快捷方式到桌面
  */
-pub fn create_shortcut(exe_path: &str, shortcut_path: &str, args: Option<&str>) -> Result<()> {
+pub fn create_shortcut(
+    exe_path: &str,
+    shortcut_path: &str,
+    icon: Option<&str>,
+    args: Option<&str>,
+) -> Result<()> {
     unsafe {
         // 初始化COM库
         let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
@@ -188,6 +245,10 @@ pub fn create_shortcut(exe_path: &str, shortcut_path: &str, args: Option<&str>) 
         shell_link.SetPath(PCWSTR(HSTRING::from(exe_path).as_ptr()))?;
         if let Some(arguments) = args {
             shell_link.SetArguments(PCWSTR(HSTRING::from(arguments).as_ptr()))?;
+        }
+        if let Some(icon) = icon {
+            // 新增：设置快捷方式图标（使用exe文件自身的图标）
+            shell_link.SetIconLocation(PCWSTR(HSTRING::from(icon).as_ptr()), 0)?;
         }
         // 获取工作目录
         let work_dir = Path::new(exe_path)

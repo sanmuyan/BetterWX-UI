@@ -7,7 +7,7 @@ use crate::structs::config::{GetCode, DEFAULT_FEATURE};
 use crate::structs::files_info::{FileInfo, FilesInfo};
 //use crate::structs::config::{get_item_by_code, get_mut_item_by_code, ismain, str_to_hex};
 use crate::utils::file::{
-    del_files, filter_files_is_exists, get_file_version, get_file_version_retry,
+    del_files, filter_files_is_exists, get_file_version_retry,
 };
 use crate::utils::patch;
 

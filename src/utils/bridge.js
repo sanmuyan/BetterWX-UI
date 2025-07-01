@@ -142,9 +142,18 @@ export async function closeApps(files) {
  * @description: 创建快捷方式
  * @returns 
  */
-export async function createShortcutToDesktop(exe,name,args) {
-    return await invoke('create_shortcut_to_desktop', { exe,name,args })
+export async function createShortcutToDesktop(exe,name,icon,args) {
+    return await invoke('create_shortcut_to_desktop', { exe,name,icon,args })
 }
+
+/**
+ * @description: 创建快捷方式
+ * @returns 
+ */
+export async function getRuntimeFile() {
+    return await invoke('get_runtime_file', {})
+}
+
 
 
 

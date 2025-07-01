@@ -8,6 +8,7 @@ use regex::Regex;
  * @param v2 第二个版本号
  * @return 如果 v1 小于 v2，返回 -1；如果 v1 大于 v2，返回 1；如果相等，返回 0。
  */
+#[allow(dead_code)]
 pub fn compare_versions(v1: &str, v2: &str) -> i32 {
     let v1_parts: Vec<&str> = v1.split('.').collect();
     let v2_parts: Vec<&str> = v2.split('.').collect();

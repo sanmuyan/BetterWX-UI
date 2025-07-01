@@ -1,10 +1,14 @@
+#[warn(dead_code)]
 use anyhow::{anyhow, Result};
+use windows::core::PCWSTR;
+use windows::Win32::Foundation::GetLastError;
+use windows::Win32::Foundation::ERROR_ALREADY_EXISTS;
+use windows::Win32::System::Threading::CreateMutexW;
 use windows::Win32::System::Threading::TerminateProcess;
 use windows::Win32::System::Threading::PROCESS_TERMINATE;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
 use std::path::Path;
-use std::path::PathBuf;
 use std::process::Command;
 use std::{thread, time};
 use windows::core::{BOOL, PWSTR};
@@ -85,6 +89,7 @@ pub fn open_folder(file: &str) -> Result<()> {
 /**
  * 获取程序所在目录
  */
+#[allow(dead_code)]
 pub fn get_exe_dir() -> Result<String> {
     let path = std::env::current_exe()?
         .parent()
@@ -180,6 +185,7 @@ pub fn terminate_process_by_pid(pid: u32) -> Result<()> {
 /**
  * 关闭App
  */
+#[allow(dead_code)]
 pub fn close_app(exe_name: &str) -> Result<()> {
     Command::new("cmd.exe")
         .creation_flags(0x08000000)
@@ -523,6 +529,7 @@ unsafe extern "system" fn enum_windows_proc(hwnd: HWND, lparam: LPARAM) -> BOOL 
 #[derive(Debug)]
 pub struct ProcessInfos(pub Vec<ProcessInfo>);
 impl ProcessInfos {
+    #[allow(dead_code)]
     pub fn retain_process_info(
         &self,
         class_name: Option<&str>,
@@ -556,6 +563,7 @@ impl ProcessInfos {
             .collect()
     }
 }
+
 
 #[derive(Debug, Clone)]
 pub struct ProcessInfo {
@@ -763,4 +771,41 @@ pub fn delayed_close_handles(h_thread: isize, h_process: isize, delay_ms: u64) {
             let _ = CloseHandle(HANDLE(h_process as _));
         }
     });
+}
+
+
+pub fn create_mutex_w(name: &str) -> bool {
+    let mut mutex_name_wide: Vec<u16> = std::ffi::OsStr::new(name)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let mutex_name_ptr = PCWSTR::from_raw(mutex_name_wide.as_mut_ptr());
+    unsafe {
+        let a = CreateMutexW(None, true, mutex_name_ptr);
+        match a {
+            Ok(_) => GetLastError() == ERROR_ALREADY_EXISTS,
+            Err(_) => false,
+        }
+    }
+}
+
+// ==================== 互斥体操作 ====================
+#[allow(dead_code)]
+pub fn check_mutex(name: &str) -> bool {
+    let mut mutex_name_wide: Vec<u16> = std::ffi::OsStr::new(name)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let mutex_name_ptr = PCWSTR::from_raw(mutex_name_wide.as_mut_ptr());
+    unsafe {
+        let a = CreateMutexW(None, false, mutex_name_ptr);
+        match a {
+            Ok(handle) => {
+                let is_exists = GetLastError() == ERROR_ALREADY_EXISTS;
+                let _ = CloseHandle(handle);
+                is_exists
+            }
+            Err(_) => false,
+        }
+    }
 }

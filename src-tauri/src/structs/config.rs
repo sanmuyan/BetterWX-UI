@@ -7,7 +7,7 @@ pub mod variables;
 
 use crate::structs::config::features::Features;
 use crate::structs::config::variables::Variables;
-use crate::structs::config::{features::Feature, rules::Rules};
+use crate::structs::config::rules::Rules;
 
 use anyhow::{anyhow, Result};
 use faster_hex::hex_decode;
@@ -370,6 +370,16 @@ const DEFAULT_FEATURE: &str = r#"[
         "severity": "danger",
         "inhead": true,
         "index": 33,
+        "tdelay": 100,
+        "style": "button",
+        "supported": true
+    },{
+        "code": "lnk_all",
+        "name": "一键快捷",
+        "method": "",
+        "description": "创建一键启动快捷方式到桌面",
+        "inhead": true,
+        "index": 34,
         "tdelay": 100,
         "style": "button",
         "supported": true

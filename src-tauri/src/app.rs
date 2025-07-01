@@ -1,11 +1,13 @@
+use crate::commands::run_apps;
 use crate::structs::config::patches::Patches;
 use crate::structs::config::rules::Rule;
 use crate::structs::config::Config;
 use crate::structs::files_info::FilesInfo;
-
+use crate::utils::file::ShotCutArgs;
 use anyhow::Ok;
 use anyhow::Result;
-
+use std::path::{Path, PathBuf};
+use anyhow::anyhow;
 use crate::utils::file;
 use crate::utils::patch;
 /**
@@ -24,7 +26,6 @@ pub fn process_rule(rule: &mut Rule) -> Result<()> {
     rule.process_rule()
 }
 
-
 /**
  * @description: 搜索基址
  * @return {*} 返回修补基址后的rule
@@ -32,7 +33,10 @@ pub fn process_rule(rule: &mut Rule) -> Result<()> {
 pub fn search_base_address(rule: &mut Rule) -> Result<()> {
     //构建文件信息
     let mut file_info = rule.build_file_info_by_num(-1)?;
-    println!("----------------------------------------file_info: {:?}", file_info.usedfiles);
+    println!(
+        "----------------------------------------file_info: {:?}",
+        file_info.usedfiles
+    );
     //备份文件
     file::backup_files(file_info.usedfiles)?;
     //读取文件补丁信息
@@ -43,8 +47,11 @@ pub fn search_base_address(rule: &mut Rule) -> Result<()> {
     //根据 patches 修复 feature 功能状态
     rule.features
         .fix_features_by_base_patches(&rule.variables, &mut rule.patches)?;
-    
-    println!("----------------------------------------rule.patches: {:?}",file_info.patches);
+
+    println!(
+        "----------------------------------------rule.patches: {:?}",
+        file_info.patches
+    );
     Ok(())
 }
 
@@ -71,4 +78,27 @@ pub fn refresh_files_info(rule: &Rule) -> Result<FilesInfo> {
 */
 pub fn apply_patch(patches: &mut Patches) -> Result<()> {
     Ok(patch::apply_patch(patches)?)
+}
+
+/*
+* @description: 应用补丁
+* @return {*} 返回修补基址后的rule
+*/
+pub fn run_by_cmd(args: &ShotCutArgs) -> Result<()> {
+    let files_name = args.list.split(",").collect::<Vec<_>>();
+    let path = PathBuf::from(&args.path);
+    let files = files_name
+        .iter()
+        .map(|x| {
+            let name = format!("{}.exe",x.trim_end_matches(".exe"));
+            path.join(name.trim()).to_string_lossy().to_string()
+        })
+        .collect::<Vec<_>>();
+    for file in &files {
+        if !Path::new(file).exists() {
+            return Err(anyhow!("文件不存在:{}", file));
+        }
+    }
+    run_apps(files, true, true)?;
+    Ok(())
 }
