@@ -79,7 +79,7 @@
 
  - 地址2：[https://wwtt.lanzn.com/b0pmh8e1i?请输入密码：52pj](https://wwtt.lanzn.com/b0pmh8e1i?请输入密码：52pj)
 
-## 📺 打赏
+## 💰 打赏
 
 <p align="center">👇如果你喜欢我的项目，欢迎打赏！👇</p>
 <h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/afaa/master/assets/weixin.png" width="320px"></h3>
