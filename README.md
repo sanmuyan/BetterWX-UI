@@ -21,7 +21,6 @@
 ## 📞 反馈交流
 
 <h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/2.0.0/assests/qq.png" width="320px"></h3>
-<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/2.0.0/assests/qqpd.png" width="320px"></h3>
 
 ## 📌 最低支持版本
 
