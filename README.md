@@ -73,28 +73,13 @@
 | Windows 10/11 |    ✅ 支持    | 需要webview2运行环境   |
 | Windows 7/8   |    ✅ 支持  | 需要webview2运行环境 + VxKex插件 |
 
-## 🔄 批量启动多账号
-
-- 方法1. [BetterWX-Starter](https://github.com/afaa1991/BetterWX-Starter)
-
-- 基于 Rust 的实现的批量启动小玩具 支持自动排序、自动登录
-
-- 方法2.  以下内容保存到 `.bat` 文件，运行。
-
-- 修改“`D:\AppData\Tencent\Weixin`” 为你的微信安装目录。
-
-- `Weixin1.exe` 共存的exe文件名。需要启动哪个，添加哪个。
-
-```bash
-start "" "D:\AppData\Tencent\Weixin\Weixin.exe"
-start "" "D:\AppData\Tencent\Weixin\Weixin1.exe"
-timeout /t 1 /nobreak >nul
-```
-
 ## 💾 下载地址
 
- - [https://wwtt.lanzn.com/b0pmh8e1i?请输入密码：52pj](https://wwtt.lanzn.com/b0pmh8e1i?请输入密码：52pj)
+ - 地址1：[https://www.123865.com/s/734rVv-nvh4H](https://www.123865.com/s/734rVv-nvh4H)
 
-## 📺 截图
+ - 地址2：[https://wwtt.lanzn.com/b0pmh8e1i?请输入密码：52pj](https://wwtt.lanzn.com/b0pmh8e1i?请输入密码：52pj)
 
-<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/refs/heads/2.0.0/screenshot.png" width="640px"></h3>
+## 📺 打赏
+
+<p align="center">👇如果你喜欢我的项目，欢迎打赏！👇</p>
+<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/afaa/master/assets/weixin.png" width="320px"></h3>
