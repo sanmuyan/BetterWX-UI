@@ -1,16 +1,18 @@
 use anyhow::{anyhow, Result};
-use std::path::PathBuf;
+use windows::Win32::System::Threading::TerminateProcess;
+use windows::Win32::System::Threading::PROCESS_TERMINATE;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 use std::{thread, time};
+use windows::core::{BOOL, PWSTR};
+use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, LPARAM, MAX_PATH, RECT, WPARAM};
 use windows::Win32::Security::{
     DuplicateTokenEx, SecurityImpersonation, TokenPrimary, TOKEN_ALL_ACCESS, TOKEN_DUPLICATE,
     TOKEN_QUERY,
 };
-use windows::core::{BOOL, PWSTR};
-use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, LPARAM, MAX_PATH, RECT, WPARAM};
 use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 use windows::Win32::System::Threading::{
     CreateProcessW, CreateProcessWithTokenW, OpenProcess, OpenProcessToken, CREATE_NO_WINDOW,
@@ -153,10 +155,26 @@ pub fn close_apps(paths: &[String]) -> Result<()> {
             continue;
         }
         if exe_name.ends_with(".exe") {
-            let _ = close_app(exe_name);
+            let process = find_pid_by_name_all(exe_name);
+            if let Ok(process) = process {
+                let pids = process.get_pids();
+                pids.iter().for_each(|pid| {
+                    let _ = terminate_process_by_pid(*pid);
+                });
+            }
+            //let _ = close_app(exe_name);
         }
     }
     Ok(())
+}
+
+pub fn terminate_process_by_pid(pid: u32) -> Result<()> {
+    unsafe {
+        let h_process = OpenProcess(PROCESS_TERMINATE, false, pid)?;
+        TerminateProcess(h_process, 1)?;
+        CloseHandle(h_process)?;
+        Ok(())
+    }
 }
 
 /**
@@ -375,10 +393,11 @@ pub fn create_process_w(file: &str, hidden: bool) -> Result<u32> {
             &mut process_info,
         )
         .map_err(|e| anyhow!("启动App失败，{}", e))?;
-
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        let _ = CloseHandle(process_info.hThread);
-        let _ = CloseHandle(process_info.hProcess);
+        delayed_close_handles(
+            process_info.hThread.0 as _,
+            process_info.hProcess.0 as _,
+            2000,
+        );
     }
     Ok(process_info.dwProcessId)
 }
@@ -438,8 +457,9 @@ pub fn run_as_user(exe_path: &str) -> Result<u32> {
             &startup_info,
             &mut process_info,
         )?;
-        let _ = CloseHandle(process_info.hThread);
-        let _ = CloseHandle(process_info.hProcess);
+        let thread_handle = process_info.hThread;
+        let process_handle = process_info.hProcess;
+        delayed_close_handles(thread_handle.0 as _, process_handle.0 as _, 2000);
         let _ = CloseHandle(new_token);
         let _ = CloseHandle(explorer_token);
         let _ = CloseHandle(explorer_process);
@@ -462,7 +482,7 @@ pub fn get_hwnds_by_pids(pids: Vec<u32>) -> Result<Vec<(u32, HWND)>> {
     unsafe {
         for _ in 0..20 {
             let _ = EnumWindows(Some(enum_windows_proc), lparam);
-            if !finder.hwnds.is_empty() {
+            if finder.hwnds.len() == finder.pids.len() {
                 break;
             }
             thread::sleep(time::Duration::from_millis(100));
@@ -485,7 +505,8 @@ unsafe extern "system" fn enum_windows_proc(hwnd: HWND, lparam: LPARAM) -> BOOL 
         let finder = &mut *(lparam.0 as *mut WindowFinder);
         let mut pid = 0u32;
         GetWindowThreadProcessId(hwnd, Some(&mut pid));
-        if finder.pids.contains(&pid) && IsWindowVisible(hwnd).as_bool() {
+        let hasnot_hwnd = finder.hwnds.iter().find(|(_, h)| h == &hwnd).is_none();
+        if hasnot_hwnd && finder.pids.contains(&pid) && IsWindowVisible(hwnd).as_bool() {
             //检查窗口是否有标题（非空）
             let mut title = [0u16; 256];
             let len = GetWindowTextW(hwnd, &mut title);
@@ -523,6 +544,16 @@ impl ProcessInfos {
             return None;
         }
         Some(Box::new(&self.0[0]))
+    }
+
+    pub fn get_pids(&self) -> Vec<u32> {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        self.0
+            .iter()
+            .map(|p| p.pid)
+            .filter(|&pid| set.insert(pid))
+            .collect()
     }
 }
 
@@ -722,4 +753,14 @@ pub fn set_window_position(hwnd: HWND, x: i32, y: i32, width: i32, height: i32) 
         .map_err(|e| anyhow!("设置窗口位置失败: {}", e))?;
     }
     Ok(())
+}
+
+pub fn delayed_close_handles(h_thread: isize, h_process: isize, delay_ms: u64) {
+    thread::spawn(move || {
+        thread::sleep(time::Duration::from_millis(delay_ms));
+        unsafe {
+            let _ = CloseHandle(HANDLE(h_thread as _));
+            let _ = CloseHandle(HANDLE(h_process as _));
+        }
+    });
 }
