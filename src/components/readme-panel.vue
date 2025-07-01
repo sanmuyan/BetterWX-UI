@@ -1,19 +1,23 @@
 <template>
     <ScrollPanel :style="style">
-        <div class="m-x "  style="line-height:3rem;" v-html="markdown.render(readmeContent)"></div>
+        <div class="m-x " style="line-height:3rem;" v-html="markdown.render(readmeContent)" @click="handleLinkClick">
+        </div>
     </ScrollPanel>
     <Loading :show="showLoading" />
 </template>
- 
+
 <script setup>
 import { ref, onMounted } from "vue"
 import { http } from "@/utils/http.js"
 import Loading from "@/components/loading.vue"
 import { USE_SAVE_README } from "@/config/app_config.js"
 import { read, save } from "@/utils/store.js"
+import { openUrl } from "@/utils/bridge.js"
 
 import MarkdownIt from "markdown-it"
-const markdown = new MarkdownIt()
+const markdown = new MarkdownIt({
+    html: true
+})
 
 const showLoading = ref(false)
 const readmeContent = ref("")
@@ -47,8 +51,6 @@ async function getReadme() {
     if (!loadContent) {
         try {
             loadContent = await http(props.updateInfoReadme.url + "?r=" + Math.random(), { text: true })
-            //替换链接防止点击
-            loadContent = loadContent.replaceAll(/\[.*?\]\((.*?)\)/g, '$1')
             saveData.content = loadContent
             if (USE_SAVE_README) {
                 //保存readme
@@ -64,4 +66,12 @@ async function getReadme() {
     readmeContent.value = loadContent || content
 }
 
+// 添加链接点击处理函数
+function handleLinkClick(event) {
+    if (event.target.tagName === 'A') {
+        event.preventDefault()
+        console.log(event.target.href);
+        openUrl(event.target.href)
+    }
+}
 </script>

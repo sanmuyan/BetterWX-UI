@@ -1,6 +1,6 @@
 [package]
 name = "BetterWX-UI"
-version = "2.1.5"
+version = "2.1.6"
 description = "A BetterWX-UI App"
 authors = ["afaa1991"]
 edition = "2021"

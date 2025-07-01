@@ -17,9 +17,7 @@ const MY_UI_APP_MUTEX_NAME: &str = "My_BXUI_App_Instance_Identity_Mutex_Name";
 
 pub fn start() {
     let args: Vec<_> = std::env::args().collect();
-    println!("{:?}", args);
     let cmd_args: ShotCutArgs = ShotCutArgs::from(args);
-    println!("{:?}", cmd_args.to_cmd_args());
     if cmd_args.check() {
         run_without_ui(&cmd_args); 
     }else{
