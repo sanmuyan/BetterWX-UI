@@ -25,7 +25,7 @@
             </div>
             <div>
                 <div v-if="parseRule.news">
-                    <span>{{ parseRule.news }}!</span>
+                    <span>{{ parseRule.news }}</span>
                 </div>
             </div>
         </div>
