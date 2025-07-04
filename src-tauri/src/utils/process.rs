@@ -136,7 +136,7 @@ pub fn run_apps(paths: &[String], login: &str, close_first: bool) -> Result<()> 
         let (hwnds, missing) = run_apps_and_check(&paths)?;
         all_hwnds.extend(&hwnds);
         let _ = sort_apps(&all_hwnds);
-        thread::sleep(time::Duration::from_millis(200));
+        thread::sleep(time::Duration::from_millis(500));
         // if auto_login {
         //     let _ = send_enter_to_apps(&all_hwnds);
         // }
@@ -840,6 +840,8 @@ pub fn send_mouse_click_to_apps(hwnds: &[(u32, HWND)],pos:&str) -> Result<()> {
     let real_y = rect.1  as f64  /h * y;
     debug!("获取窗口大小:{:?}  输入窗体：{}，{} 点击位置：{}，{} 输入坐标:{},{}",rect,w,h,real_x,real_y,x,y);
     for (_, hwnd) in hwnds {
+        let _ = send_mouse_click(*hwnd, real_x  as i32, real_y as i32);
+        thread::sleep(time::Duration::from_millis(100));
         let _ = send_mouse_click(*hwnd, real_x  as i32, real_y as i32);
     }
     }
