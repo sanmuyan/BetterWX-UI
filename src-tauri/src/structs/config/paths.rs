@@ -6,6 +6,7 @@ use crate::utils::file::get_file_version;
 use crate::utils::process::get_runtime_path;
 
 use anyhow::{anyhow, Result};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -107,7 +108,7 @@ impl Paths {
                 break;
             }
         }
-        println!("所有获取路径结果: {:?}", paths_result);
+        debug!("所有获取路径结果: {:?}", paths_result);
         Ok(paths_result.into())
     }
 }
@@ -237,27 +238,27 @@ impl PathMethod {
         if !self.suffix.is_empty() {
             result = format!("{}{}", result, self.suffix);
         }
-        println!("修正后的路径 fix_result: {}", result);
+        debug!("修正后的路径 fix_result: {}", result);
         result
     }
 
     fn get_path_by_calculate(&self, paths_result: &mut PathsResult) -> Result<String> {
         self.chech_args(&["value"])?;
         let args = self.args.as_ref().unwrap().calc_string(paths_result);
-        println!("获取到计算路径 get_path_by_calculate: {}", args.value);
+        debug!("获取到计算路径 get_path_by_calculate: {}", args.value);
         Ok(args.value)
     }
 
     fn get_path_by_fileinfo(&self, paths_result: &mut PathsResult) -> Result<String> {
         self.chech_args(&["path"])?;
         let args = self.args.as_ref().unwrap().calc_string(paths_result);
-        println!("获取到文件路径 get_path_by_fileinfo: {}", &args.path);
+        debug!("获取到文件路径 get_path_by_fileinfo: {}", &args.path);
         get_file_version(&args.path)
     }
 
     fn get_path_by_runtime(&self) -> Result<String> {
         let path = get_runtime_path()?;
-        println!("获取到运行所在路径 get_path_by_runtime: {}", path);
+        debug!("获取到运行所在路径 get_path_by_runtime: {}", path);
         Ok(path)
     }
 
@@ -265,7 +266,7 @@ impl PathMethod {
         self.chech_args(&["path", "field"])?;
         let args = self.args.as_ref().unwrap().calc_string(paths_result);
         if let Ok(value) = read_regedit(&args.path, &args.field) {
-            println!("获取到注册表路径 get_path_by_regedit: {}", value);
+            debug!("获取到注册表路径 get_path_by_regedit: {}", value);
             return Ok(value);
         }
         Ok(String::new())

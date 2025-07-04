@@ -111,7 +111,6 @@ pub fn apply_patch(patches: Patches) -> Result<Patches, MyError> {
 #[tauri::command(async)]
 pub fn remove_patches_backup_files(patches: Patches) -> Result<(), MyError> {
     let files = patches.get_bak_files();
-    println!("remove_patches_backup_files    {:?}", files);
     Ok(file::del_files(files)?)
 }
 
@@ -136,8 +135,8 @@ pub fn build_feature_file_info(rule: Rule) -> Result<FileInfo, MyError> {
 * @description: 运行所有选中程序
 */
 #[tauri::command(async)]
-pub fn run_apps(files: Vec<String>, login: bool, close: bool) -> Result<(), MyError> {
-    Ok(process::run_apps(&files, login, close)?)
+pub fn run_apps(files: Vec<String>, login: String, close: bool) -> Result<(), MyError> {
+    Ok(process::run_apps(&files, &login, close)?)
 }
 
 /*

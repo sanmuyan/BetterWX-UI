@@ -1,6 +1,7 @@
 #[warn(dead_code)]
 use anyhow::{anyhow, Result};
 use known_folders::{get_known_folder_path, KnownFolder};
+use log::debug;
 use std::fs;
 use std::path::Path;
 use windows::core::Interface;
@@ -79,7 +80,7 @@ pub fn backup_files(files: Vec<String>) -> Result<()> {
                 let file_ver = get_file_version_retry(file)?;
                 let bak_file_ver = get_file_version_retry(&bak_file)?;
                 if file_ver != bak_file_ver {
-                    println!(
+                    debug!(
                         "备份文件版本号不一致,备份文件版本:{},目标文件版本:{} ",
                         bak_file_ver, file_ver
                     );
@@ -157,15 +158,26 @@ pub struct ShotCutArgs {
     pub name: String,
     pub path: String,
     pub list: String,
+    pub level: String,
+    pub login: String,
 }
 
 impl ShotCutArgs {
-    pub fn new(code: impl Into<String>, name: impl Into<String>, path: impl Into<String>, list: impl Into<String>) -> Self {
+    pub fn new(
+        code: impl Into<String>,
+        name: impl Into<String>,
+        path: impl Into<String>,
+        list: impl Into<String>,
+        level: impl Into<String>,
+        login: impl Into<String>,
+    ) -> Self {
         Self {
             code: code.into(),
             name: name.into(),
             path: path.into(),
             list: list.into(),
+            level: level.into(),
+            login: login.into(),
         }
     }
 
@@ -176,15 +188,14 @@ impl ShotCutArgs {
         )
     }
 
-    pub fn check(&self)->bool{
-        self.code.len()>0 && self.name.len()>0 && self.path.len()>0 && self.list.len()>0
+    pub fn check(&self) -> bool {
+        self.code.len() > 0 && self.name.len() > 0 && self.path.len() > 0 && self.list.len() > 0
     }
 }
 
 impl From<Vec<String>> for ShotCutArgs {
     fn from(args: Vec<String>) -> Self {
         let mut result = Self::default();
-        
         for arg in args {
             if let Some((key, value)) = arg.split_once('=') {
                 match key {
@@ -192,11 +203,13 @@ impl From<Vec<String>> for ShotCutArgs {
                     "name" => result.name = value.to_string(),
                     "path" => result.path = value.to_string(),
                     "list" => result.list = value.to_string(),
+                    "level" => result.level = value.to_string(),
+                    "login" => result.login = value.to_string(),
                     _ => continue,
                 }
             }
         }
-        
+
         result
     }
 }

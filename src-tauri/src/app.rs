@@ -1,15 +1,16 @@
-use crate::commands::run_apps;
 use crate::structs::config::patches::Patches;
 use crate::structs::config::rules::Rule;
 use crate::structs::config::Config;
 use crate::structs::files_info::FilesInfo;
+use crate::utils::file;
 use crate::utils::file::ShotCutArgs;
+use crate::utils::patch;
+use crate::utils::process::run_apps;
+use anyhow::anyhow;
 use anyhow::Ok;
 use anyhow::Result;
+use log::debug;
 use std::path::{Path, PathBuf};
-use anyhow::anyhow;
-use crate::utils::file;
-use crate::utils::patch;
 /**
  * @description: 预处理解析 config
  * @return {*}
@@ -33,7 +34,7 @@ pub fn process_rule(rule: &mut Rule) -> Result<()> {
 pub fn search_base_address(rule: &mut Rule) -> Result<()> {
     //构建文件信息
     let mut file_info = rule.build_file_info_by_num(-1)?;
-    println!(
+    debug!(
         "----------------------------------------file_info: {:?}",
         file_info.usedfiles
     );
@@ -48,10 +49,10 @@ pub fn search_base_address(rule: &mut Rule) -> Result<()> {
     rule.features
         .fix_features_by_base_patches(&rule.variables, &mut rule.patches)?;
 
-    println!(
-        "----------------------------------------rule.patches: {:?}",
-        file_info.patches
-    );
+    // debug!(
+    //     "----------------------------------------rule.patches: {:?}",
+    //     file_info.patches
+    // );
     Ok(())
 }
 
@@ -90,7 +91,7 @@ pub fn run_by_cmd(args: &ShotCutArgs) -> Result<()> {
     let files = files_name
         .iter()
         .map(|x| {
-            let name = format!("{}.exe",x.trim_end_matches(".exe"));
+            let name = format!("{}.exe", x.trim_end_matches(".exe"));
             path.join(name.trim()).to_string_lossy().to_string()
         })
         .collect::<Vec<_>>();
@@ -99,6 +100,6 @@ pub fn run_by_cmd(args: &ShotCutArgs) -> Result<()> {
             return Err(anyhow!("文件不存在:{}", file));
         }
     }
-    run_apps(files, true, true)?;
+    run_apps(&files, &args.login, true)?;
     Ok(())
 }

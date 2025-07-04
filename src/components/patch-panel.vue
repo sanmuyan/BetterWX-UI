@@ -1,7 +1,7 @@
 <template>
     <div class="m-x not-select">
-        <CoexistList :fileInfo="FeatureFileInfo" :rule="baseRule" :mainFileInfo="filesInfo?.[0]"
-            :note="getNote(FeatureFileInfo.num)" @event="handleEvent" class="border-b">
+        <CoexistList :fileInfo="featureFileInfo" :rule="baseRule" :mainFileInfo="filesInfo?.[0]"
+            :note="getNote(featureFileInfo.num)" @event="handleEvent" class="border-b">
         </CoexistList>
     </div>
     <ScrollPanel :style="style">
@@ -67,7 +67,7 @@ const inited = ref(false)
 const parseRule = ref({})
 const baseRule = ref({})
 const filesInfo = ref([])
-const FeatureFileInfo = ref({})
+const featureFileInfo = ref({})
 const showLoading = ref(false)
 const version = ref(false)
 const initError = ref("")
@@ -137,8 +137,8 @@ async function init() {
             //清除缓存
             clearAll()
         }
-        FeatureFileInfo.value = await bridge.buildFeatureFileInfo(baseRule.value)
-        console.log("功能区", FeatureFileInfo.value);
+        featureFileInfo.value = await bridge.buildFeatureFileInfo(baseRule.value)
+        console.log("功能区", featureFileInfo.value);
         filesInfo.value = await bridge.refreshFilesInfo(baseRule.value)
         console.log("构建的filesInfo.value", filesInfo.value);
         //加载选中状态
@@ -163,7 +163,7 @@ async function init() {
  */
 async function handleEvent(payload) {
     let { code, num, status } = payload
-    let fileInfo = num == "Y" ? FeatureFileInfo.value : filesInfo.value.find(item => item.num == num)
+    let fileInfo = num == "Y" ? featureFileInfo.value : filesInfo.value.find(item => item.num == num)
     console.log(payload, fileInfo);
     let feature = fileInfo?.features.find(item => item.code == code)
     if (showLoading.value) {
@@ -217,7 +217,7 @@ async function handleEvent(payload) {
                 await setSelectAll(status)
                 break
             case "open_all":
-                await openAll(true)
+                await openAll(true,feature.target)
                 break
             case "close":
                 await bridge.closeApps([feature.target])
@@ -250,7 +250,7 @@ async function handleEvent(payload) {
  * @description: 运行全部
  * @return {*}
  */
-async function openAll(status) {
+async function openAll(status,target) {
     let filesInfoFilter = filesInfo.value.filter(item => item.features.find(feature => feature.code == "select" && feature.selected))
     let files = []
     for (let fileInfo of filesInfoFilter) {
@@ -262,7 +262,7 @@ async function openAll(status) {
         return
     }
     if (status) {
-        await bridge.runApps(files, true, true)
+        await bridge.runApps(files, target, true)
     } else {
         await bridge.closeApps(files)
     }
@@ -312,7 +312,7 @@ async function getSelectAll() {
             }
         })
     })
-    FeatureFileInfo.value.features.forEach(feature => {
+    featureFileInfo.value.features.forEach(feature => {
         if (feature.code == "select_all") {
             feature.selected = selected.length == filesInfo.value.length
         }
@@ -601,10 +601,14 @@ async function createLnkAll() {
         return
     }
     let mainFileInfo = filesInfo.value.find(item => item.ismain)
-    let mainFeature = mainFileInfo.features.find(item => item.code == "open")
-    let icon = mainFeature.target
-    let path = getDirname(mainFeature.target)
+    let openFeature = mainFileInfo.features.find(item => item.code == "open")
+    let icon = openFeature.target
+    let path = getDirname(openFeature.target)
+    let openAllFeature = featureFileInfo.value.features.find(item => item.code == "open_all")
     let args = `code="${code}" name="${name}" path="${path}" list="${files}"`
+    if (openAllFeature?.target) {
+        args += ` login="${openAllFeature.target}"`
+    }
     let target = await bridge.getRuntimeFile()
     name = `${name}#一键启动`
     await bridge.createShortcutToDesktop(target, name,icon,args)

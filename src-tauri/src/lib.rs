@@ -7,9 +7,11 @@ mod utils;
 use commands::*;
 use tauri::Manager;
 use tauri_plugin_window_state::{StateFlags, WindowExt};
+use windows::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG};
 
 use crate::app::run_by_cmd;
 use crate::utils::file::ShotCutArgs;
+use crate::utils::logger;
 use crate::utils::process::create_mutex_w;
 use crate::utils::win::message_box;
 
@@ -18,22 +20,26 @@ const MY_UI_APP_MUTEX_NAME: &str = "My_BXUI_App_Instance_Identity_Mutex_Name";
 pub fn start() {
     let args: Vec<_> = std::env::args().collect();
     let cmd_args: ShotCutArgs = ShotCutArgs::from(args);
+    let _ = logger::init(Some(&cmd_args.level));
     if cmd_args.check() {
-        run_without_ui(&cmd_args); 
-    }else{
+        run_without_ui(&cmd_args);
+    } else {
         run();
     }
 }
 
 pub fn run_without_ui(args: &ShotCutArgs) {
-    if create_mutex_w(&format!("{}_{}",MY_UI_APP_MUTEX_NAME,args.code)) {
-        let _ = message_box("错误", &format!("请等待其他 {} 快捷方式执行完毕!",args.name));
-        std::process::exit(0);
+    if create_mutex_w(&format!("{}_{}", MY_UI_APP_MUTEX_NAME, args.code)) {
+        let _ = message_box(
+            "错误",
+            &format!("请等待其他 {} 快捷方式执行完毕!", args.name),
+        );
+        std::process::exit(1);
     }
-    if let Err(e)= run_by_cmd(args) {
-         let _ = message_box("错误", &format!("执行 {} 快捷方式失败:{}",args.name,e));
+    if let Err(e) = run_by_cmd(args) {
+        let _ = message_box("错误", &format!("执行 {} 快捷方式失败:{}", args.name, e));
     }
-    std::process::exit(0);
+    std::process::exit(1);
 }
 
 pub fn run() {

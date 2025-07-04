@@ -1,23 +1,26 @@
+use super::file::is_file_exists;
 #[warn(dead_code)]
 use anyhow::{anyhow, Result};
-use windows::core::PCWSTR;
-use windows::Win32::Foundation::GetLastError;
-use windows::Win32::Foundation::ERROR_ALREADY_EXISTS;
-use windows::Win32::System::Threading::CreateMutexW;
-use windows::Win32::System::Threading::TerminateProcess;
-use windows::Win32::System::Threading::PROCESS_TERMINATE;
+use log::debug;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 use std::{thread, time};
+use uiautomation::{UIAutomation, UIElement, UITreeWalker};
+use windows::core::PCWSTR;
 use windows::core::{BOOL, PWSTR};
+use windows::Win32::Foundation::GetLastError;
+use windows::Win32::Foundation::ERROR_ALREADY_EXISTS;
 use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, LPARAM, MAX_PATH, RECT, WPARAM};
 use windows::Win32::Security::{
     DuplicateTokenEx, SecurityImpersonation, TokenPrimary, TOKEN_ALL_ACCESS, TOKEN_DUPLICATE,
     TOKEN_QUERY,
 };
 use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
+use windows::Win32::System::Threading::CreateMutexW;
+use windows::Win32::System::Threading::TerminateProcess;
+use windows::Win32::System::Threading::PROCESS_TERMINATE;
 use windows::Win32::System::Threading::{
     CreateProcessW, CreateProcessWithTokenW, OpenProcess, OpenProcessToken, CREATE_NO_WINDOW,
     CREATE_PROCESS_LOGON_FLAGS, PROCESS_ALL_ACCESS, PROCESS_CREATION_FLAGS, PROCESS_INFORMATION,
@@ -29,8 +32,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     GetWindowThreadProcessId, IsWindowVisible, PostMessageW, SetWindowPos, HWND_TOPMOST,
     SM_CXSCREEN, SM_CYSCREEN, SWP_NOSIZE, SWP_SHOWWINDOW, SW_HIDE, WM_KEYDOWN, WM_KEYUP,
 };
-
-use super::file::is_file_exists;
+use windows::Win32::UI::WindowsAndMessaging::{GetShellWindow, WM_LBUTTONDOWN, WM_LBUTTONUP};
 
 pub fn get_runtime_path() -> Result<String> {
     let path = std::env::current_exe()
@@ -115,8 +117,8 @@ struct WindowFinder {
  * @return 窗口句柄列表
  * @throws anyhow::Error 启动失败
  */
-pub fn run_apps(paths: &[String], auto_login: bool, close_first: bool) -> Result<()> {
-    println!("计划启动App: {} 个", paths.len());
+pub fn run_apps(paths: &[String], login: &str, close_first: bool) -> Result<()> {
+    debug!("计划启动App: {} 个", paths.len());
     let mut all_hwnds = Vec::new();
     if paths.is_empty() {
         return Err(anyhow!("启动失败，没有指定App"));
@@ -130,13 +132,29 @@ pub fn run_apps(paths: &[String], auto_login: bool, close_first: bool) -> Result
         let _ = close_apps(&paths);
         thread::sleep(time::Duration::from_millis(200));
     }
-    if auto_login {
+    if login.len() > 0 {
         let (hwnds, missing) = run_apps_and_check(&paths)?;
-        all_hwnds.extend(hwnds);
+        all_hwnds.extend(&hwnds);
         let _ = sort_apps(&all_hwnds);
-        if auto_login {
-            let _ = send_enter_to_apps(&all_hwnds);
-        }
+        thread::sleep(time::Duration::from_millis(200));
+        // if auto_login {
+        //     let _ = send_enter_to_apps(&all_hwnds);
+        // }
+        //发送登录
+        // let finder = UIFinder::from(login);
+        // let _ = &hwnds.iter().for_each(|item| {
+        //     debug!("登录UI元素匹配条件:{}   pid {}", finder.to_string(), item.0);
+        //     if let Ok(ui) = ui_finder_by_hwnd(item.1, &finder) {
+        //         debug!("找到UI元素{}", ui);
+        //         let _ = ui.set_focus();
+        //         //let _ = ui.send_keys("{Enter}", 10);
+        //         let _ = send_enter(item.1);
+        //     } else {
+        //         debug!("未找到UI元素{}", item.0);
+        //     }
+        // });
+        //发送登录
+        let _ = send_mouse_click_to_apps(&all_hwnds,login);
         if missing.is_empty() {
             return Ok(());
         }
@@ -202,7 +220,7 @@ pub fn close_app(exe_name: &str) -> Result<()> {
  * @return 窗口句柄列表
  * @throws anyhow::Error 启动失败
  */
-pub fn run_apps_and_notcheck(paths: &[String]) -> Result<()> {
+pub fn run_apps_and_notcheck(paths: &[String]) -> Result<Vec<u32>> {
     let mut process_infos = vec![];
     let mut pids = vec![];
     for path in paths {
@@ -215,11 +233,11 @@ pub fn run_apps_and_notcheck(paths: &[String]) -> Result<()> {
                 pids.push(pinfo);
             }
             Err(e) => {
-                println!("启动 {} 失败: {}", path, e);
+                debug!("启动 {} 失败: {}", path, e);
             }
         }
     }
-    Ok(())
+    Ok(pids)
 }
 
 /**
@@ -241,11 +259,11 @@ pub fn run_apps_and_check(paths: &[String]) -> Result<(Vec<(u32, HWND)>, Vec<Str
                 pids.push(pinfo);
             }
             Err(e) => {
-                println!("启动 {} 失败: {}", path, e);
+                debug!("启动 {} 失败: {}", path, e);
             }
         }
     }
-    thread::sleep(time::Duration::from_millis(2000));
+    thread::sleep(time::Duration::from_millis(500));
     let hwnds = get_hwnds_by_pids(pids)?;
     let missing_apps = check_missing_processes(&process_infos, &hwnds);
     Ok((hwnds, missing_apps))
@@ -272,12 +290,10 @@ pub fn check_missing_processes(process_infos: &[PidPath], hwnds: &[(u32, HWND)])
  * @param hwnds 窗口句柄列表
  * @throws anyhow::Error 堆叠失败
  */
-pub fn sort_apps(hwnds: &[(u32, HWND)]) -> Result<()> {
+pub fn sort_apps(hwnds: &[(u32, HWND)]) -> Result<Vec<(HWND,i32,i32)>> {
+    let mut  result = Vec::new();
     if hwnds.is_empty() {
         return Err(anyhow!("窗口句柄列表为空"));
-    }
-    if hwnds.len() == 1 {
-        return Ok(());
     }
     let total = hwnds.len() as i32;
     let (sw, sh) = get_screen_size()?;
@@ -307,7 +323,7 @@ pub fn sort_apps(hwnds: &[(u32, HWND)]) -> Result<()> {
         let diff_w = temp_col_num * w - sw;
         // 对窗口叠加
         w = w - diff_w / (temp_col_num - 1);
-        println!(
+        debug!(
             "temp_col_num {} diff_w {} 窗口宽度: {},高度: {}",
             temp_col_num, diff_w, w, h
         )
@@ -335,13 +351,14 @@ pub fn sort_apps(hwnds: &[(u32, HWND)]) -> Result<()> {
         let start_y = (sh - row_num * h) / 2;
         let x = start_x + col_index * w;
         let y = start_y + row_index * h;
-        // println!(
+        // debug!(
         //     "第 {} 个窗口,行: {},列: {},x: {},y: {}",
         //     i, row_index, col_index, x, y
         // );
         set_window_position(*hwnd, x, y, app_size.0, app_size.1)?;
+        result.push((*hwnd,x, y));
     }
-    Ok(())
+    Ok(result)
 }
 
 pub fn try_run_as_user(exe_path: &str) -> Result<u32> {
@@ -357,33 +374,27 @@ pub fn create_process_w(file: &str, hidden: bool) -> Result<u32> {
         .chain(std::iter::once(0))
         .collect();
     let file_ptr = Some(unsafe { std::mem::transmute(file_wide.as_mut_ptr()) });
-
     let mut startup_info = STARTUPINFOW::default();
     if hidden {
         startup_info.dwFlags = STARTF_USESHOWWINDOW;
         startup_info.wShowWindow = SW_HIDE.0 as u16;
     }
-
     let creation_flags = if hidden {
         CREATE_NO_WINDOW
     } else {
         PROCESS_CREATION_FLAGS(0)
     };
-
     let mut process_info = PROCESS_INFORMATION::default();
-    let mut startup_info = STARTUPINFOW::default();
     unsafe {
         //尝试设置父进程为explorer.exe
-        let find_infos = find_pid_by_name("explorer.exe");
-        if let Ok(pifs) = find_infos {
-            if let Some(pif) = pifs.first() {
-                let parent_handle = OpenProcess(PROCESS_ALL_ACCESS, false, pif.pid);
-                if let Ok(parent_handle) = parent_handle {
-                    startup_info.hStdInput = parent_handle;
-                    startup_info.hStdOutput = parent_handle;
-                    startup_info.hStdError = parent_handle;
-                    startup_info.dwFlags |= STARTF_USESTDHANDLES;
-                }
+        let pid = get_explorer_pid();
+        if let Ok(pid) = pid {
+            let parent_handle = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
+            if let Ok(parent_handle) = parent_handle {
+                startup_info.hStdInput = parent_handle;
+                startup_info.hStdOutput = parent_handle;
+                startup_info.hStdError = parent_handle;
+                startup_info.dwFlags |= STARTF_USESTDHANDLES;
             }
         }
         CreateProcessW(
@@ -409,17 +420,8 @@ pub fn create_process_w(file: &str, hidden: bool) -> Result<u32> {
 }
 
 pub fn run_as_user(exe_path: &str) -> Result<u32> {
-    let process_infos = find_pid_by_name("explorer.exe").map_err(|_| anyhow!("降权运行失败"))?;
-    if let None = process_infos.first() {
-        return Err(anyhow!("降权运行失败"));
-    }
-    let explorer_process = unsafe {
-        OpenProcess(
-            PROCESS_QUERY_INFORMATION,
-            false,
-            process_infos.first().unwrap().pid,
-        )?
-    };
+    let pid = get_explorer_pid().map_err(|_| anyhow!("降权运行失败"))?;
+    let explorer_process = unsafe { OpenProcess(PROCESS_QUERY_INFORMATION, false, pid)? };
     let mut explorer_token = HANDLE::default();
     unsafe {
         OpenProcessToken(
@@ -439,7 +441,6 @@ pub fn run_as_user(exe_path: &str) -> Result<u32> {
             &mut new_token,
         )?
     };
-
     let mut startup_info = STARTUPINFOW::default();
     startup_info.hStdInput = explorer_process;
     startup_info.hStdOutput = explorer_process;
@@ -491,7 +492,7 @@ pub fn get_hwnds_by_pids(pids: Vec<u32>) -> Result<Vec<(u32, HWND)>> {
             if finder.hwnds.len() == finder.pids.len() {
                 break;
             }
-            thread::sleep(time::Duration::from_millis(100));
+            thread::sleep(time::Duration::from_millis(500));
         }
     };
     if finder.hwnds.is_empty() {
@@ -564,7 +565,6 @@ impl ProcessInfos {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct ProcessInfo {
     pub pid: u32,
@@ -577,6 +577,18 @@ struct WindowFinder2 {
     process_name: String,
     process_infos: ProcessInfos,
     all: bool,
+}
+
+pub fn get_explorer_pid() -> Result<u32> {
+    let shell_window = unsafe { GetShellWindow() };
+    if !shell_window.is_invalid() {
+        let mut pid = 0;
+        unsafe { GetWindowThreadProcessId(shell_window, Some(&mut pid)) };
+        if pid != 0 {
+            return Ok(pid);
+        }
+    }
+    Err(anyhow!("获取explorer_pid失败"))
 }
 
 pub fn find_pid_by_name(process_name: &str) -> Result<ProcessInfos> {
@@ -678,6 +690,80 @@ unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> B
 }
 
 /**
+ * 设置窗口位置和大小
+ * @param hwnd 窗口句柄
+ * @param x 窗口左上角x坐标
+ * @param y 窗口左上角y坐标
+ * @param width 窗口宽度
+ * @param height 窗口高度
+ * @param repaint 是否重绘窗口
+ * @return Result<()> 操作结果
+ */
+pub fn set_window_position(hwnd: HWND, x: i32, y: i32, width: i32, height: i32) -> Result<()> {
+    unsafe {
+        SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            x,
+            y,
+            width,
+            height,
+            SWP_SHOWWINDOW | SWP_NOSIZE,
+        )
+        .map_err(|e| anyhow!("设置窗口位置失败: {}", e))?;
+    }
+    Ok(())
+}
+
+pub fn delayed_close_handles(h_thread: isize, h_process: isize, delay_ms: u64) {
+    thread::spawn(move || {
+        thread::sleep(time::Duration::from_millis(delay_ms));
+        unsafe {
+            let _ = CloseHandle(HANDLE(h_thread as _));
+            let _ = CloseHandle(HANDLE(h_process as _));
+        }
+    });
+}
+
+pub fn create_mutex_w(name: &str) -> bool {
+    let mut mutex_name_wide: Vec<u16> = std::ffi::OsStr::new(name)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let mutex_name_ptr = PCWSTR::from_raw(mutex_name_wide.as_mut_ptr());
+    unsafe {
+        let a = CreateMutexW(None, true, mutex_name_ptr);
+        match a {
+            Ok(_) => GetLastError() == ERROR_ALREADY_EXISTS,
+            Err(_) => false,
+        }
+    }
+}
+
+// ==================== 互斥体操作 ====================
+#[allow(dead_code)]
+pub fn check_mutex(name: &str) -> bool {
+    let mut mutex_name_wide: Vec<u16> = std::ffi::OsStr::new(name)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let mutex_name_ptr = PCWSTR::from_raw(mutex_name_wide.as_mut_ptr());
+    unsafe {
+        let a = CreateMutexW(None, false, mutex_name_ptr);
+        match a {
+            Ok(handle) => {
+                let is_exists = GetLastError() == ERROR_ALREADY_EXISTS;
+                let _ = CloseHandle(handle);
+                is_exists
+            }
+            Err(_) => false,
+        }
+    }
+}
+
+// ==================== 窗口UI ====================
+
+/**
  * 获取窗口大小
  * @param hwnd 窗口句柄
  * @return 窗口大小
@@ -726,7 +812,7 @@ pub fn send_enter_to_apps(hwnds: &[(u32, HWND)]) -> Result<()> {
  * @param hwnd 目标窗口句柄
  * @return Result<()> 操作结果
  */
-pub fn send_enter(hwnd: HWND) -> Result<()> {
+pub fn send_enter( hwnd:HWND) -> Result<()> {
     unsafe {
         PostMessageW(Some(hwnd), WM_KEYDOWN, WPARAM(13), LPARAM(0))
             .map_err(|e| anyhow!("发送回车键按下消息失败: {}", e))?;
@@ -738,74 +824,179 @@ pub fn send_enter(hwnd: HWND) -> Result<()> {
 }
 
 /**
- * 设置窗口位置和大小
- * @param hwnd 窗口句柄
- * @param x 窗口左上角x坐标
- * @param y 窗口左上角y坐标
- * @param width 窗口宽度
- * @param height 窗口高度
- * @param repaint 是否重绘窗口
+ * 向窗口列表发送鼠标左键单击消息
+ * @param hwnds 目标窗口句柄列表
  * @return Result<()> 操作结果
  */
-pub fn set_window_position(hwnd: HWND, x: i32, y: i32, width: i32, height: i32) -> Result<()> {
-    unsafe {
-        SetWindowPos(
-            hwnd,
-            Some(HWND_TOPMOST),
-            x,
-            y,
-            width,
-            height,
-            SWP_SHOWWINDOW | SWP_NOSIZE,
-        )
-        .map_err(|e| anyhow!("设置窗口位置失败: {}", e))?;
+pub fn send_mouse_click_to_apps(hwnds: &[(u32, HWND)],pos:&str) -> Result<()> {
+    if !hwnds.is_empty(){
+    let rect = get_window_size(hwnds[0].1)?;
+    let pos_vec:Vec<&str> = pos.split(",").collect();
+    let w = pos_vec[0].parse::<f64>()?;
+    let h = pos_vec[1].parse::<f64>()?;
+    let x = pos_vec[2].parse::<f64>()?;
+    let y = pos_vec[3].parse::<f64>()?;
+    let real_x = rect.0  as f64  / w * x;
+    let real_y = rect.1  as f64  /h * y;
+    debug!("获取窗口大小:{:?}  输入窗体：{}，{} 点击位置：{}，{} 输入坐标:{},{}",rect,w,h,real_x,real_y,x,y);
+    for (_, hwnd) in hwnds {
+        let _ = send_mouse_click(*hwnd, real_x  as i32, real_y as i32);
+    }
     }
     Ok(())
 }
 
-pub fn delayed_close_handles(h_thread: isize, h_process: isize, delay_ms: u64) {
-    thread::spawn(move || {
-        thread::sleep(time::Duration::from_millis(delay_ms));
-        unsafe {
-            let _ = CloseHandle(HANDLE(h_thread as _));
-            let _ = CloseHandle(HANDLE(h_process as _));
-        }
-    });
+/**
+ * 向窗口发送鼠标左键单击消息(带坐标)
+ * @param hwnd 目标窗口句柄
+ * @param x 点击位置的x坐标(相对于窗口)
+ * @param y 点击位置的y坐标(相对于窗口)
+ * @return Result<()> 操作结果
+ */
+pub fn send_mouse_click(hwnd: HWND, x: i32, y: i32) -> Result<()> {
+    unsafe {
+        // 将坐标转换为LPARAM格式 (y << 16 | x)
+        let lparam = LPARAM(((y << 16) | x) as isize);
+
+        // 发送鼠标左键按下消息
+        PostMessageW(Some(hwnd), WM_LBUTTONDOWN, WPARAM(1), lparam)
+            .map_err(|e| anyhow!("发送鼠标左键按下消息失败: {}", e))?;
+
+        thread::sleep(time::Duration::from_millis(50));
+
+        // 发送鼠标左键释放消息
+        PostMessageW(Some(hwnd), WM_LBUTTONUP, WPARAM(0), lparam)
+            .map_err(|e| anyhow!("发送鼠标左键释放消息失败: {}", e))?;
+    }
+    Ok(())
 }
 
+pub struct UIFinder {
+    name: Option<String>,
+    class_name: Option<String>,
+    control_type: Option<String>,
+}
 
-pub fn create_mutex_w(name: &str) -> bool {
-    let mut mutex_name_wide: Vec<u16> = std::ffi::OsStr::new(name)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
-    let mutex_name_ptr = PCWSTR::from_raw(mutex_name_wide.as_mut_ptr());
-    unsafe {
-        let a = CreateMutexW(None, true, mutex_name_ptr);
-        match a {
-            Ok(_) => GetLastError() == ERROR_ALREADY_EXISTS,
-            Err(_) => false,
+impl UIFinder {
+    pub fn new(name: Option<&str>, class_name: Option<&str>, control_type: Option<&str>) -> Self {
+        Self {
+            name: name.map(|e| e.to_string()),
+            class_name: class_name.map(|e| e.to_string()),
+            control_type: control_type.map(|e| e.to_string()),
         }
     }
-}
-
-// ==================== 互斥体操作 ====================
-#[allow(dead_code)]
-pub fn check_mutex(name: &str) -> bool {
-    let mut mutex_name_wide: Vec<u16> = std::ffi::OsStr::new(name)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
-    let mutex_name_ptr = PCWSTR::from_raw(mutex_name_wide.as_mut_ptr());
-    unsafe {
-        let a = CreateMutexW(None, false, mutex_name_ptr);
-        match a {
-            Ok(handle) => {
-                let is_exists = GetLastError() == ERROR_ALREADY_EXISTS;
-                let _ = CloseHandle(handle);
-                is_exists
+    pub fn matched(&self, element: &UIElement) -> bool {
+        if let Some(name) = &self.name {
+            if element
+                .get_name()
+                .map(|e_name| !e_name.contains(name))
+                .unwrap_or(true)
+            {
+                return false;
             }
-            Err(_) => false,
+        }
+        if let Some(class_name) = &self.class_name {
+            if element
+                .get_classname()
+                .map(|e_class| !e_class.contains(class_name))
+                .unwrap_or(true)
+            {
+                return false;
+            }
+        }
+        if let Some(control_type) = &self.control_type {
+            if element
+                .get_control_type()
+                .map(|e_type| !e_type.to_string().contains(control_type))
+                .unwrap_or(true)
+            {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut result = String::new();
+        if let Some(name) = &self.name {
+            result.push_str(&format!("name={},", name));
+        }
+        if let Some(class_name) = &self.class_name {
+            result.push_str(&format!("class_name={},", class_name));
+        }
+        if let Some(control_type) = &self.control_type {
+            result.push_str(&format!("control_type={}", control_type));
+        }
+        result
+    }
+}
+
+impl From<&str> for UIFinder {
+    fn from(value: &str) -> Self {
+        let values = value.split(",");
+        let mut finder = Self::new(None, None, None);
+        for v in values {
+            let mut kv = v.split("=");
+            let key = kv.next().unwrap();
+            let value = kv.next().unwrap();
+            match key {
+                "name" => finder.name = Some(value.to_string()),
+                "class_name" => finder.class_name = Some(value.to_string()),
+                "control_type" => finder.control_type = Some(value.to_string()),
+                _ => {}
+            }
+        }
+        finder
+    }
+}
+
+pub fn ui_finder_by_hwnd(hwnd: HWND, finder: &UIFinder) -> Result<UIElement> {
+    let automation = UIAutomation::new()?;
+    let root = automation.element_from_handle(hwnd.into())?;
+    let walker = automation.get_control_view_walker()?;
+    if let Some(ui) = walker_element(&walker, &root, 0, finder) {
+        return Ok(ui);
+    }
+    Err(anyhow!("未找到匹配的UI元素"))
+}
+
+pub fn ui_finder_by_pid(pid: u32, finder: &UIFinder) -> Result<UIElement> {
+    let automation = UIAutomation::new()?;
+    let walker = automation.get_control_view_walker()?;
+    let root = automation.get_root_element()?;
+    let matcher = automation.create_matcher().from(root).process_id(pid);
+    if let Ok(ui) = matcher.find_first() {
+        if let Some(ui) = walker_element(&walker, &ui, 0, finder) {
+            return Ok(ui);
         }
     }
+    Err(anyhow!("未找到匹配的UI元素"))
+}
+
+fn walker_element(
+    walker: &UITreeWalker,
+    element: &UIElement,
+    level: usize,
+    finder: &UIFinder,
+) -> Option<UIElement> {
+    // 首先检查当前元素是否匹配
+    if finder.matched(element) {
+        return Some(element.clone());
+    }
+    // 递归检查子元素
+    if let Ok(child) = walker.get_first_child(element) {
+        // 检查第一个子元素
+        if let Some(found) = walker_element(walker, &child, level + 1, finder) {
+            return Some(found);
+        }
+        // 检查兄弟元素
+        let mut next = child;
+        while let Ok(sibling) = walker.get_next_sibling(&next) {
+            if let Some(found) = walker_element(walker, &sibling, level + 1, finder) {
+                return Some(found);
+            }
+            next = sibling;
+        }
+    }
+    None
 }

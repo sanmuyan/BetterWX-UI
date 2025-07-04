@@ -3,6 +3,7 @@ use crate::structs::config::{hex_decode_to_vec, replace_wildcards};
 
 use anyhow::{anyhow, Result};
 use faster_hex::hex_string;
+use log::debug;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -25,7 +26,7 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
             continue;
         }
         let path = patch.get_exists_path();
-        println!("应用补丁操作的文件:{}", &path);
+        debug!("应用补丁操作的文件:{}", &path);
         //缓存文件数据
         let file_data = file_cache
             .entry(patch.saveas.to_string())
@@ -41,7 +42,7 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
             } else {
                 &address.origina
             };
-            println!(
+            debug!(
                 "应用补丁:{} status:{} patch_str {}",
                 patch.code, patch.status, patch_str
             );
@@ -62,7 +63,7 @@ pub fn apply_patch(patches: &mut Patches) -> Result<()> {
     }
     // 保存修改后的文件
     for (path, data) in file_cache {
-        println!("应用补丁保存的文件:{}", &path);
+        debug!("应用补丁保存的文件:{}", &path);
         std::fs::write(path, data).map_err(|_| anyhow!("保存文件失败，请先关闭所有WX程序"))?;
     }
     Ok(())
@@ -121,14 +122,14 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
                 patch.patched = patched;
                 patch.status = patched;
             }
-            println!(
+            debug!(
                 "搜索结果: {} - code:{}  - patched:{} - supported:{}, addesses: {:?}",
                 found, &patch.code, patch.patched, patch.supported, patch.addresses
             );
         } else {
             // 读取模式
             let path: &str = patch.get_exists_path();
-            println!("读取模式:{}", &path);
+           //debug!("读取模式:{}", &path);
             let file_data = file_cache
                 .entry(path.to_string())
                 .or_insert_with(|| std::fs::read(&path).unwrap_or_else(|_| Vec::new()));
@@ -145,7 +146,7 @@ pub fn read_patches(patches: &mut Patches) -> Result<()> {
             }
             patch.patched = patched;
             patch.status = patched;
-            println!("读取模式: {} - code:{}", patch.patched, patch.code)
+            //debug!("读取模式: {} - code:{}", patch.patched, patch.code)
         }
     }
     Ok(())
@@ -166,7 +167,7 @@ fn hex_search(data: &str, reg_text: &str, multiple: bool) -> Result<(bool, Strin
     let captures: Vec<_> = reg.captures_iter(data).collect();
     //添加对多个地址的支持
     // 如果不允许多个地址，且找到多个 提前返回
-    println!("搜索结果:{:?}", captures);
+    //debug!("搜索结果:{:?}", captures);
     if captures.len() == 1 || (multiple && captures.len() > 1) {
         for capture in captures {
             if let Some(matched) = capture.get(capture.len() - 1) {
