@@ -1,4 +1,4 @@
-<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/refs/heads/2.0.0/src-tauri/icons/128x128@2x.png" width="250px"></h3>
+<h3 align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/refs/heads/3.0.0/src-tauri/icons/128x128@2x.png" width="250px"></h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-green">
@@ -20,7 +20,7 @@
 
 ## 📞 反馈交流
 
-<p align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/2.0.0/assests/qq.png" width="320px"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/3.0.0/assests/qq.png" width="320px"></p>
 
 ## 📌 最低支持版本
 
