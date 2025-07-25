@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@import "tailwindcss-primeui";
+@import 'primeicons/primeicons.css';
+
+html{
+  font-size: 15px;
+  user-select: none;
+}
+
+a {
+  color: blue !important;
+  text-decoration: underline !important;
+  text-decoration-color: blue !important;
+}
+
+.my-border-color{
+  border-color: color-mix(in srgb, var(--p-surface-200) calc(100%* var(--tw-border-opacity, 1)), transparent);
+}
