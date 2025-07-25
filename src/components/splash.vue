@@ -30,6 +30,8 @@
 import { onMounted, ref } from 'vue'
 import { sleep } from '@/utils/tools.js'
 import * as updateApiss from '@/apis/update.js'
+import { Window } from '@tauri-apps/api/window'
+import { getVersion, getName } from '@tauri-apps/api/app'
 
 const update = ref({})
 const showLoading = ref(true)
@@ -43,12 +45,15 @@ async function check_update() {
     try {
         await addMsg("检查软件更新...")
         update.value = await updateApiss.update_check()
+        const appVersion = await getVersion()
+        const appName = await getName()
         //update.value.force = true
         let info = update.value
         if (info.nversion) {
             await addMsg(`发现新版本 v${info.nversion}，请更新`)
         }
-       //update.force
+        setTitle(info.name || appName, appVersion)
+        //update.force
         console.log(info);
         await addMsg("获取配置文件...")
         let config = await updateApiss.update_config_check(info.config)
@@ -69,6 +74,11 @@ async function check_update() {
 const emit = defineEmits(["loaded"])
 function loaded(data) {
     emit('loaded', data)
+}
+
+function setTitle(name, version) {
+    const currentWindow = Window.getCurrent()
+    currentWindow.setTitle(`${name} v${version}`)
 }
 
 async function addMsg(msg, delay = 0) {
