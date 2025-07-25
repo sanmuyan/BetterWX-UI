@@ -18,6 +18,6 @@ pub fn process_close_apps(files: Vec<String>) -> Result<()> {
 }
 
 #[tauri::command(async)]
-pub fn process_close_app(file_name: String) -> Result<()> {
-    Ok(process::process_close_app(file_name.as_str())?)
+pub fn process_close_app(file_name: String,delay:u64) -> Result<()> {
+    Ok(process::process_close_app(file_name.as_str(),delay)?)
 }

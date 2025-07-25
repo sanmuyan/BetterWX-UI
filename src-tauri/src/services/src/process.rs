@@ -95,14 +95,14 @@ fn get_pid_by_path(file: &str) -> Result<Vec<Pid>> {
 pub fn process_close_apps(files: &[String]) -> Result<()> {
     for file in files {
         let file_name = file::get_file_name(file)?;
-        process_close_app(&file_name)?;
+        process_close_app(&file_name,0)?;
     }
     Ok(())
 }
 
-pub fn process_close_app(file_name: &str) -> Result<()> {
-    if let Err(_) = process::close_app_by_pid(file_name) {
-        process::close_app_by_cmd(file_name)?;
+pub fn process_close_app(file_name: &str,delay:u64) -> Result<()> {
+    if let Err(_) = process::close_app_by_pid(file_name,delay) {
+        process::close_app_by_cmd(file_name,delay)?;
     }
     Ok(())
 }

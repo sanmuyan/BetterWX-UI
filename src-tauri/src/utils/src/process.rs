@@ -24,19 +24,21 @@ pub fn run_app_by_cmd(file: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn close_app_by_pid(file_name: &str) -> Result<()> {
+pub fn close_app_by_pid(file_name: &str,delay:u64) -> Result<()> {
     let pids = Pid::find_all_by_process_name(&file_name);
     if let Ok(pids) = pids {
         for pid in pids {
             pid.terminate()?;
         }
+        sleep(delay);
     }
     Ok(())
 }
 
-pub fn close_app_by_cmd(file_name: &str) -> Result<()> {
+pub fn close_app_by_cmd(file_name: &str,delay:u64) -> Result<()> {
     let cmd = Cmd::new(file_name);
     cmd.close_app()?;
+    sleep(delay);
     Ok(())
 }
 

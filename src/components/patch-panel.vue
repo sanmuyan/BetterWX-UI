@@ -170,8 +170,11 @@ async function handleMethod(data) {
     }
 }
 
-async function close(feature) {
-    await processApis.process_close_app(feature.target)
+async function close(feature,delay=0) {
+    await processApis.process_close_app(feature.target,delay)
+    if (delay) {
+        await sleep(delay)
+    }
 }
 
 async function lnk_all(data) {
