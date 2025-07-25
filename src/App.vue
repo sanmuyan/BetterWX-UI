@@ -50,7 +50,7 @@ onMounted(async () => {
   let index = await read(storeData)
   tabIndex.value = index.tabIndex ? index.tabIndex : "readme"
   await nextTick()
-})
+})``
 
 watch(tabIndex, (newValue) => {
   let storeData = {
