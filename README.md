@@ -66,7 +66,7 @@
 - **环境异常：**
 - 删除共存重建
 
-- [webview2下载地址](https://developer.microsoft.com/zh-cn/microsoft-edge/webview2/?form=MA13LH#download)
+- [webview2下载地址](https://developer.microsoft.com/zh-cn/microsoft-edge/webview2/?form=MA13LH#[tauri::command(async)]ownload)
 
 ## 🖥️ 系统兼容性
 

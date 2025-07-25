@@ -7,10 +7,10 @@ export async function process_run_app(file) {
     return await invoke("process_run_app",{file})
 }
 
-export async function process_close_apps(files,delay=0) {
-    return await invoke("process_close_apps",{files,delay})
+export async function process_close_apps(files) {
+    return await invoke("process_close_apps",{files})
 }
 
-export async function process_close_app(fileName,delay=0) {
-    return await invoke("process_close_app",{fileName,delay})
+export async function process_close_app(fileName) {
+    return await invoke("process_close_app",{fileName})
 }

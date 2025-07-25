@@ -35,11 +35,14 @@ pub fn process_run_apps(paths: &[String], login: &Option<String>) -> Result<()> 
     for path in paths {
         file::check_file_exists(&path)?;
     }
-    process_close_apps(&paths, 1000)?;
+    process_close_apps(&paths)?;
     let mut pids = run_apps(paths)?;
-    if !pids.is_empty()
-        && let Some(login) = login
-    {
+    sleep(2000);
+    if pids.len() != paths.len() {
+        return Err(ServicesError::RunAppError(paths.len(),pids.len()).into());
+    }
+    if let Some(login) = login
+    {   
         sort_and_click(&mut pids, login)?;
     }
     Ok(())
@@ -50,22 +53,6 @@ fn run_apps(paths: &[String]) -> Result<Vec<Pid>> {
     for path in paths {
         let p = process_run_app(path)?;
         pids.extend(p);
-    }
-    sleep(2000);
-    let mut empty_paths = Vec::new();
-    for path in paths {
-        let p = get_pid_by_path(path)?;
-        if p.is_empty() {
-            empty_paths.push(path.clone());
-        }
-    }
-    // 二次启动
-    for path in &empty_paths {
-        let p = process_run_app(&path)?;
-        pids.extend(p);
-    }
-    if !empty_paths.is_empty() {
-        sleep(2000);
     }
     Ok(pids)
 }
@@ -105,20 +92,17 @@ fn get_pid_by_path(file: &str) -> Result<Vec<Pid>> {
     return Ok(vec![]);
 }
 
-pub fn process_close_apps(files: &[String], delay: u64) -> Result<()> {
+pub fn process_close_apps(files: &[String]) -> Result<()> {
     for file in files {
         let file_name = file::get_file_name(file)?;
-        process_close_app(&file_name, delay)?;
+        process_close_app(&file_name)?;
     }
     Ok(())
 }
 
-pub fn process_close_app(file_name: &str, delay: u64) -> Result<()> {
-    if let Err(_) = process::close_app_by_pid(file_name, delay) {
-        process::close_app_by_cmd(file_name, delay)?;
-        if delay > 0 {
-            sleep(delay);
-        }
+pub fn process_close_app(file_name: &str) -> Result<()> {
+    if let Err(_) = process::close_app_by_pid(file_name) {
+        process::close_app_by_cmd(file_name)?;
     }
     Ok(())
 }

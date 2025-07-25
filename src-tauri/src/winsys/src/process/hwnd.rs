@@ -34,25 +34,25 @@ pub enum HwndError {
     #[error("class_name和window_name不能同时为空")]
     FindWindowsWArgsBothNone,
 
-    #[error("根据进程名查找窗口失败")]
+    #[error("根据进程名查找窗口失败，请重试")]
     WindowsNotFind,
 
-    #[error("枚举窗口失败")]
+    #[error("枚举窗口失败，请重试")]
     EnumWindowsError,
 
-    #[error("设置窗口位置失败")]
+    #[error("设置窗口位置失败，请重试")]
     SetWindowPosError,
 
-    #[error("根据进程名查找窗口失败")]
+    #[error("根据进程名查找窗口失败，请重试")]
     FindWindowWError,
 
-    #[error("获取窗口尺寸失败")]
+    #[error("获取窗口尺寸失败，请重试")]
     GetAppSizeError,
 
-    #[error("发送鼠标消息失败")]
+    #[error("发送鼠标消息失败，请重试")]
     SendMouseKeyError,
 
-    #[error("获取缩放比例失败")]
+    #[error("获取缩放比例失败，请重试")]
     GetDpiScaleError,
 }
 

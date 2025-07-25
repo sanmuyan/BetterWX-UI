@@ -2,7 +2,7 @@ use crate::errors::Result;
 use services::shortcut;
 use utils::shortcut::ShortCutArgs;
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn shortcut_to_desktop(
     file: Option<&str>,
     name: Option<&str>,
@@ -12,7 +12,7 @@ pub fn shortcut_to_desktop(
     Ok(shortcut::shortcut_to_desktop(file, name, icon, args)?)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn shortcut_to_startup(
     file: Option<&str>,
     name: Option<&str>,

@@ -24,25 +24,19 @@ pub fn run_app_by_cmd(file: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn close_app_by_pid(file_name: &str, delay: u64) -> Result<()> {
+pub fn close_app_by_pid(file_name: &str) -> Result<()> {
     let pids = Pid::find_all_by_process_name(&file_name);
     if let Ok(pids) = pids {
         for pid in pids {
             pid.terminate()?;
         }
-        if delay > 0 {
-            sleep(delay);
-        }
     }
     Ok(())
 }
 
-pub fn close_app_by_cmd(file_name: &str, delay: u64) -> Result<()> {
+pub fn close_app_by_cmd(file_name: &str) -> Result<()> {
     let cmd = Cmd::new(file_name);
     cmd.close_app()?;
-    if delay > 0 {
-        sleep(delay);
-    }
     Ok(())
 }
 
@@ -57,8 +51,24 @@ pub fn sort_apps(pids: &[Pid]) -> Result<()> {
         let hwnd = Hwnd::from(pid);
         hwnds.push(hwnd);
     }
-    let hwnd1 = &hwnds[0];
-    let app_size = hwnd1.get_app_size()?;
+    
+    // 多次尝试，避免失败
+    let mut app_size = (0, 0);
+    for i in 0..hwnds.len() {
+        let hwnd = &hwnds[i];
+        match hwnd.get_app_size() {
+            Ok(s) => {
+                app_size = s;
+                break;
+            }
+            Err(e) => {
+                if i == hwnds.len() - 1 {
+                    return Err(e.into());
+                }
+                sleep(500);
+            }
+        }
+    }
     let (mut w, h) = app_size;
     // 计算最大行列数
     let max_col_num = sw / w;

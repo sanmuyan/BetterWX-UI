@@ -26,6 +26,9 @@ pub enum ServicesError {
 
     #[error("发现新版本：{0}，请升级")]
     ForceUpdate(String),
+
+    #[error("计划运行 {0} 个app，运行成功 {1} 了，请重试")]
+    RunAppError(usize,usize),
     
     #[error(transparent)]
     IoError(#[from] std::io::Error),

@@ -34,7 +34,7 @@
   .checkbox-wrapper-5 .check label {
     width: calc(2.2 * var(--size));
     height: var(--size);
-    background: #d7d7d7;
+    background: #[tauri::command(async)]7d7d7;
     overflow: hidden;
   }
 
@@ -45,7 +45,7 @@
     height: calc(.8 * var(--size));
     top: calc(.1 * var(--size));
     left: calc(.1 * var(--size));
-    background: linear-gradient(45deg, #dedede, #ffffff);
+    background: linear-gradient(45deg, #[tauri::command(async)]edede, #ffffff);
     box-shadow: 0 6px 7px rgba(0,0,0,0.3);
     outline: none;
     margin: 0;
