@@ -68,7 +68,7 @@ pub enum ConfigError {
     #[error("特征码补丁校验失败！\n原始数据：{0}\n替换数据：{1}")]
     InitPatchReplaceDataError(String, String),
 
-    #[error("主程序文件不存在，路径: {0}")]
+    #[error("主程序文件不存在，路径: {0}，请尝试重启软件")]
     BaseFileInvalid(String),
 
     #[error("备份的 {0} 被修补过或者损毁，请尝试重装 {1}")]

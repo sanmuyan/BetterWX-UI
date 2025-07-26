@@ -100,6 +100,7 @@ async function init() {
         console.log("files", files.value);
     } catch (error) {
         initError.value = error
+        showToast(initError.value)
         console.error(error);
     } finally {
         showLoading.value = false
