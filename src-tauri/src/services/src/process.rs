@@ -3,6 +3,8 @@ use crate::errors::ServicesError;
 use log::debug;
 use std::path::PathBuf;
 use utils::file;
+use utils::file_pid_hwnd::FilePid;
+use utils::file_pid_hwnd::FilesPid;
 use utils::process;
 use utils::process::sleep;
 use utils::shortcut::ShortCutArgs;
@@ -20,9 +22,6 @@ pub fn process_run_by_cmd(args: &ShortCutArgs) -> Result<()> {
             path.join(name.trim()).to_string_lossy().to_string()
         })
         .collect::<Vec<_>>();
-    for file in &files {
-        file::check_file_exists(file)?;
-    }
     process_run_apps(&files, &args.login)?;
     Ok(())
 }
@@ -35,74 +34,165 @@ pub fn process_run_apps(paths: &[String], login: &Option<String>) -> Result<()> 
     for path in paths {
         file::check_file_exists(&path)?;
     }
-    process_close_apps(&paths)?;
-    let mut pids = run_apps(paths)?;
-    sleep(2000);
-    if pids.len() != paths.len() {
-        return Err(ServicesError::RunAppError(paths.len(),pids.len()).into());
+    let closed = process_close_apps(&paths)?;
+    debug!("关闭程序成功: {:?}", closed);
+    if closed {
+        sleep(1000);
     }
-    if let Some(login) = login
-    {   
-        sort_and_click(&mut pids, login)?;
+    let mut pids = try_run_apps(paths)?;
+    if let Some(login) = login {
+        sort_and_click(&mut pids, login).map_err(|e| {
+            debug!("一键启动失败，请重试。{:?}", e);
+            e
+        })?;
     }
+    debug!("批量运行程序成功: {:?}", pids);
     Ok(())
 }
 
-fn run_apps(paths: &[String]) -> Result<Vec<Pid>> {
-    let mut pids = Vec::new();
-    for path in paths {
-        let p = process_run_app(path)?;
-        pids.extend(p);
+fn try_run_apps(paths: &[String]) -> Result<FilesPid> {
+    let mut last_error = None;
+    let mut success_pids = FilesPid::new();
+    let mut run_paths = paths.to_vec();
+    for i in 0..3 {
+        let pids = run_apps(&run_paths);
+        match pids {
+            Ok(pids) => {
+                success_pids.extend(pids);
+                run_paths = filter_run_failed(paths, &success_pids);
+                if run_paths.is_empty() {
+                    break;
+                }
+                debug!("第 {} 次 try_run_apps，运行失败的: {:?}", i + 1, run_paths);
+            }
+            Err(e) => {
+                debug!("第 {} 次 try_run_apps，运行出错: {:?}", i + 1, e);
+                last_error = Some(e);
+            }
+        }
+        if i == 2 {
+            break;
+        }
     }
-    Ok(pids)
+    return if success_pids.len() == paths.len() {
+        Ok(success_pids)
+    } else {
+        let last_error = match last_error {
+            Some(e) => e.to_string(),
+            None => ServicesError::UnkonwError.to_string(),
+        };
+        Err(ServicesError::RunAppError(
+            paths.len(),
+            success_pids.len(),
+            last_error,
+        ))
+    };
 }
 
-fn sort_and_click(pids: &mut Vec<Pid>, login: &str) -> Result<()> {
-    process::sort_apps(pids)?;
-    sleep(500);
-    let hwnds = pids.iter().map(|x| Hwnd::from(*x)).collect::<Vec<_>>();
-    send_mouse_click_to_apps(&hwnds, login)
+fn run_apps(paths: &[String]) -> Result<FilesPid> {
+    for path in paths {
+        process_run_app(path)?;
+    }
+    let pids = try_get_pids_by_paths(paths);
+    return Ok(pids);
 }
 
-fn send_mouse_click_to_apps(hwnds: &[Hwnd], pos: &str) -> Result<()> {
+fn filter_run_failed(paths: &[String], pids: &FilesPid) -> Vec<String> {
+    let mut fialed_paths = Vec::new();
+    for path in paths {
+        let f = pids.0.iter().find(|x| &x.file == path).is_none();
+        if f {
+            fialed_paths.push(path.to_string());
+        }
+    }
+    debug!("启动失败的程序，再次尝运行: {:?}", fialed_paths);
+    return fialed_paths;
+}
+
+fn sort_and_click(fpids: &FilesPid, pos: &str) -> Result<()> {
+    process::sort_apps(fpids).map_err(|e| {
+        debug!("排列窗口失败: {:?}", e);
+        ServicesError::ArrangeWindowError
+    })?;
+    send_mouse_click_to_apps(fpids, pos).map_err(|e| {
+        debug!("发送点击事件失败: {:?}", e);
+        ServicesError::SendClickEventError
+    })
+}
+
+fn send_mouse_click_to_apps(fpids: &FilesPid, pos: &str) -> Result<()> {
     let pos = pos.split(",").collect::<Vec<_>>();
     let x = pos[0].trim().parse::<i32>().unwrap_or(0);
     let y = pos[1].trim().parse::<i32>().unwrap_or(0);
-    process::send_mouse_click_to_apps_use_scale(hwnds, x, y)?;
+    process::send_mouse_click_to_apps_use_scale(fpids, x, y)?;
     Ok(())
 }
+fn try_get_pids_by_paths(files: &[String]) -> FilesPid {
+    for i in 0..10 {
+        debug!("第 {} 次，try_get_pids_by_paths 尝试获取程序进程ID", i + 1);
+        let fpids = get_pids_by_paths(&files);
+        if fpids.len() == files.len() || i == 9 {
+            return fpids;
+        }
+        sleep(500);
+    }
+    return FilesPid(vec![]);
+}
 
-pub fn process_run_app(file: &str) -> Result<Vec<Pid>> {
+fn get_pids_by_paths(files: &[String]) -> FilesPid {
+    let mut fpids = FilesPid::new();
+    for file in files {
+        if let Ok(p) = get_pid_by_path(&file) {
+            fpids.insert(p);
+        }
+    }
+    return fpids;
+}
+
+fn get_pid_by_path(file: &str) -> Result<FilePid> {
+    let file_name = file::get_file_name(file)?;
+    if let Ok(pids) = Pid::find_all_by_process_name(&file_name)
+        && !pids.is_empty()
+    {
+        let hwnd = Hwnd::from(pids[0]);
+        if !hwnd.is_invalid() {
+            return Ok(FilePid {
+                file: file.to_string(),
+                pid: pids[0],
+                hwnd,
+            });
+        }
+    }
+    return Err(ServicesError::UnkonwError);
+}
+
+pub fn process_run_app(file: &str) -> Result<()> {
     file::check_file_exists(file)?;
-    if let Ok(p) = Process::try_create_as_user(file) {
-        return Ok(vec![p.get_pid()]);
+    if let Ok(_) = Process::try_create_as_user(file) {
+        return Ok(());
     }
     if let Ok(_) = process::run_app_by_cmd(file) {
-        return Ok(get_pid_by_path(file)?);
+        return Ok(());
     } else {
         return Err(ServicesError::RunAppFailed(file.to_string()).into());
     }
 }
 
-fn get_pid_by_path(file: &str) -> Result<Vec<Pid>> {
-    let file_name = file::get_file_name(file)?;
-    if let Ok(pids) = Pid::find_all_by_process_name(&file_name) {
-        return Ok(pids);
-    }
-    return Ok(vec![]);
-}
-
-pub fn process_close_apps(files: &[String]) -> Result<()> {
+pub fn process_close_apps(files: &[String]) -> Result<bool> {
+    let mut closed = Vec::new();
     for file in files {
         let file_name = file::get_file_name(file)?;
-        process_close_app(&file_name,0)?;
+        closed.push(process_close_app(&file_name)?);
     }
-    Ok(())
+    Ok(closed.iter().any(|x| *x))
 }
 
-pub fn process_close_app(file_name: &str,delay:u64) -> Result<()> {
-    if let Err(_) = process::close_app_by_pid(file_name,delay) {
-        process::close_app_by_cmd(file_name,delay)?;
-    }
-    Ok(())
+pub fn process_close_app(file_name: &str) -> Result<bool> {
+    let _ = match process::close_app_by_pid(file_name) {
+        Ok(closed) => {
+            return Ok(closed);
+        }
+        Err(_) => process::close_app_by_cmd(file_name, 0),
+    };
+    Ok(true)
 }

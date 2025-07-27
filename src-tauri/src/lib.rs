@@ -6,13 +6,18 @@ use utils::shortcut::ShortCutArgs;
 use winsys::process::mutex::Mutex;
 use winsys::win::keep_running;
 use winsys::win::message_box;
+use setting::DEBUG_MODEL;
 
 const MY_UI_APP_MUTEX_NAME: &str = "My_BXUI_App_Instance_Identity_Mutex_Name";
 
 pub fn run() {
     let args: Vec<_> = std::env::args().collect();
     let cmd_args: ShortCutArgs = ShortCutArgs::from(args);
-    let _ = logger::init(cmd_args.level.clone());
+    if DEBUG_MODEL {
+        let _ = logger::init(Some("debug"));
+    } else {
+        let _ = logger::init(cmd_args.level.clone());
+    }
     if cmd_args.check() {
         run_without_ui(&cmd_args);
     } else {

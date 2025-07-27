@@ -3,6 +3,7 @@ use crate::close_handle_option;
 use crate::errors::Result;
 use crate::process::pid::Pid;
 use crate::types::wstr::WSTR;
+use log::debug;
 use thiserror::Error;
 use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::Foundation::HANDLE;
@@ -106,10 +107,12 @@ impl Process {
     }
 
     pub fn create(command: &str) -> Result<Self> {
+        debug!("使用直接运行程序: {:?}", command);
         Self::new(command).run()
     }
 
     pub fn create_as_user(command: &str) -> Result<Self> {
+        debug!("使用降权启动程序: {:?}", command);
         Self::new(command).run_as_user()
     }
 

@@ -11,3 +11,4 @@ pub mod shortcut;
 pub mod store;
 pub mod tools;
 pub mod version;
+pub mod file_pid_hwnd;

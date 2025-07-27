@@ -27,8 +27,17 @@ pub enum ServicesError {
     #[error("发现新版本：{0}，请升级")]
     ForceUpdate(String),
 
-    #[error("计划运行 {0} 个app，运行成功 {1} 了，请重试")]
-    RunAppError(usize,usize),
+    #[error("计划启动 {0} 个，成功启动 {1} 个，请重试。失败原因：{2}")]
+    RunAppError(usize,usize,String),
+
+    #[error("一键启动失败，排列窗口失败，请重试。")]
+    ArrangeWindowError,
+
+    #[error("一键启动失败，发送点击事件失败，请重试。")]
+    SendClickEventError,
+
+    #[error("未知错误")]
+    UnkonwError,
     
     #[error(transparent)]
     IoError(#[from] std::io::Error),

@@ -1,5 +1,5 @@
 [workspace.package]
-version = "3.0.0"
+version = "3.0.1"
 edition = "2024"
 
 [package]
@@ -69,6 +69,7 @@ log = { workspace = true }
 winsys = { workspace = true }
 config = { workspace = true }
 tokio = { workspace = true }
+setting = { workspace = true }
 services = { path = "src/services" }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"

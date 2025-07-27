@@ -1,7 +1,8 @@
 use crate::cmd::Cmd;
 use crate::errors::Result;
+use crate::file_pid_hwnd::FilesPid;
+use log::debug;
 use thiserror::Error;
-use winsys::process::hwnd::Hwnd;
 use winsys::process::pid::Pid;
 use winsys::win::get_screen_size;
 
@@ -19,58 +20,45 @@ pub fn sleep(millis: u64) {
 }
 
 pub fn run_app_by_cmd(file: &str) -> Result<()> {
+    debug!("使用命令行启动程序: {:?}", file);
     let cmd = Cmd::new(file);
     cmd.run_app()?;
     Ok(())
 }
 
-pub fn close_app_by_pid(file_name: &str,delay:u64) -> Result<()> {
+pub fn close_app_by_pid(file_name: &str) -> Result<bool> {
     let pids = Pid::find_all_by_process_name(&file_name);
+    debug!(
+        "关闭程序 close_app_by_pid : {:?}, 进程ID: {:?}",
+        file_name, pids
+    );
     if let Ok(pids) = pids {
         for pid in pids {
             pid.terminate()?;
         }
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+pub fn close_app_by_cmd(file_name: &str, delay: u64) -> Result<()> {
+    debug!("使用命令行关闭程序: {:?}", file_name);
+    let cmd = Cmd::new(file_name);
+    cmd.close_app()?;
+    if delay > 0 {
         sleep(delay);
     }
     Ok(())
 }
 
-pub fn close_app_by_cmd(file_name: &str,delay:u64) -> Result<()> {
-    let cmd = Cmd::new(file_name);
-    cmd.close_app()?;
-    sleep(delay);
-    Ok(())
-}
-
-pub fn sort_apps(pids: &[Pid]) -> Result<()> {
-    if pids.is_empty() || pids.len() == 1 {
+pub fn sort_apps(fpids: &FilesPid) -> Result<()> {
+    if fpids.is_empty() || fpids.len() == 1 {
         return Err(ProcessError::HwndsEmptyError.into());
     }
-    let total = pids.len() as i32;
+    let total = fpids.len() as i32;
     let (sw, sh) = get_screen_size()?;
-    let mut hwnds = Vec::new();
-    for pid in pids {
-        let hwnd = Hwnd::from(pid);
-        hwnds.push(hwnd);
-    }
-    
     // 多次尝试，避免失败
-    let mut app_size = (0, 0);
-    for i in 0..hwnds.len() {
-        let hwnd = &hwnds[i];
-        match hwnd.get_app_size() {
-            Ok(s) => {
-                app_size = s;
-                break;
-            }
-            Err(e) => {
-                if i == hwnds.len() - 1 {
-                    return Err(e.into());
-                }
-                sleep(500);
-            }
-        }
-    }
+    let app_size = try_get_app_size(fpids)?;
     let (mut w, h) = app_size;
     // 计算最大行列数
     let max_col_num = sw / w;
@@ -99,7 +87,7 @@ pub fn sort_apps(pids: &[Pid]) -> Result<()> {
     }
     // 计算列数
     let col_num = total / row_num;
-    for (i, hwnd) in hwnds.iter().enumerate() {
+    for (i, fpid) in fpids.0.iter().enumerate() {
         // 当前行
         let index = i as i32;
         let mut row_index = index / col_num;
@@ -120,35 +108,58 @@ pub fn sort_apps(pids: &[Pid]) -> Result<()> {
         let start_y = (sh - row_num * h) / 2;
         let x = start_x + col_index * w;
         let y = start_y + row_index * h;
-        hwnd.set_window_pos(x, y)?;
+        fpid.hwnd.set_window_pos(x, y)?;
     }
     Ok(())
 }
 
-pub fn send_mouse_click_to_apps_use_scale(hwnds: &[Hwnd], x: i32, y: i32) -> Result<()> {
-    if hwnds.is_empty() {
+fn try_get_app_size(fpids: &FilesPid) -> Result<(i32, i32)> {
+    let mut app_size = (0, 0);
+    for (i,fpid) in fpids.0.iter().enumerate() {
+        let hwnd = &fpid.hwnd;
+        match hwnd.get_app_size() {
+            Ok(s) => {
+                app_size = s;
+                break;
+            }
+            Err(e) => {
+                if i == fpids.len() - 1 {
+                    return Err(e.into());
+                }
+            }
+        }
+    }
+    Ok(app_size)
+}
+
+pub fn send_mouse_click_to_apps_use_scale(fpids: &FilesPid, x: i32, y: i32) -> Result<()> {
+    if fpids.is_empty() {
         return Err(ProcessError::HwndsEmptyError.into());
     }
+    let scale = try_get_app_scale(fpids)?;
+    let real_x = (scale * x as f32) as i32;
+    let real_y = (scale * y as f32) as i32;
+    for fpid in &fpids.0 {
+        let _ = fpid.hwnd.send_mouse_click(real_x, real_y);
+    }
+    Ok(())
+}
+
+fn try_get_app_scale(fpids: &FilesPid) -> Result<f32> {
     let mut scale = 1.0;
-    for i in 0..hwnds.len() {
-        let hwnd = &hwnds[i];
+    for (i,fpid) in fpids.0.iter().enumerate() {
+        let hwnd = &fpid.hwnd;
         match hwnd.get_app_scale() {
             Ok(s) => {
                 scale = s;
                 break;
             }
             Err(e) => {
-                if i == hwnds.len() - 1 {
+                if i == fpids.len() - 1 {
                     return Err(e.into());
                 }
-                sleep(300);
             }
         }
     }
-    let real_x = (scale * x as f32) as i32;
-    let real_y = (scale * y as f32) as i32;
-    for hwnd in hwnds {
-        let _ = hwnd.send_mouse_click(real_x, real_y);
-    }
-    Ok(())
+    Ok(scale)
 }

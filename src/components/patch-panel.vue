@@ -172,8 +172,8 @@ async function handleMethod(data) {
 }
 
 async function close(feature,delay=0) {
-    await processApis.process_close_app(feature.target,delay)
-    if (delay) {
+    let closed = await processApis.process_close_app(feature.target)
+    if (closed && delay) {
         await sleep(delay)
     }
 }
