@@ -1,5 +1,6 @@
 use crate::errors::Result;
 use crate::serders::skippers::skip_if_empty;
+use log::debug;
 use macros::ImpConfigVecIsEmptyTrait;
 use macros::SortedDeserializeByVersionDesc;
 use serde::Deserialize;
@@ -34,6 +35,9 @@ impl Updates {
             return Ok(self.0.remove(0));
         }
         if let Ok(mut update) = self.take_first_less_by_version(MAIN_PKG_VERSION) {
+            if self.is_empty() {
+                return Ok(update);
+            }
             let update0 = &self.0[0];
             destructure_assign!(
                 update,
