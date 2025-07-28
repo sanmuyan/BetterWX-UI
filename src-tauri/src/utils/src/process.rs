@@ -52,8 +52,11 @@ pub fn close_app_by_cmd(file_name: &str, delay: u64) -> Result<()> {
 }
 
 pub fn sort_apps(fpids: &FilesPid) -> Result<()> {
-    if fpids.is_empty() || fpids.len() == 1 {
+    if fpids.is_empty() {
         return Err(ProcessError::HwndsEmptyError.into());
+    }
+    if fpids.len() == 1 {
+        return Ok(());
     }
     let total = fpids.len() as i32;
     let (sw, sh) = get_screen_size()?;

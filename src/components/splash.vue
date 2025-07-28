@@ -47,13 +47,16 @@ async function check_update() {
         update.value = await updateApiss.update_check()
         const appVersion = await getVersion()
         const appName = await getName()
-        //update.value.force = true
         let info = update.value
+        setTitle(info.name || appName, appVersion)
         if (info.nversion) {
             await addMsg(`发现新版本 v${info.nversion}，请更新`)
+            if (info.force) {
+                return
+            }else{
+                await sleep(3000)
+            }
         }
-        setTitle(info.name || appName, appVersion)
-        //update.force
         console.log(info);
         await addMsg("获取配置文件...")
         let config = await updateApiss.update_config_check(info.config)

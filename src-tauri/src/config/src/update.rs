@@ -30,8 +30,15 @@ impl Updates {
         if self.is_empty() {
             return Err(UpdatesError::UpdatesIsEmpty.into());
         }
-        if MAIN_PKG_VERSION == self.0[0].version.version.as_str() {
+        let main_ver = Version::new(MAIN_PKG_VERSION);
+        let self0_ver = Version::new(self.0[0].version.version.as_str());
+        if &main_ver == &self0_ver {
             return Ok(self.0.remove(0));
+        }
+        if self.0.len() == 1 && (&main_ver < &self0_ver) {
+            let mut update = self.0.remove(0);
+            update.nversion = update.version.clone();
+            return Ok(update);
         }
         if let Ok(mut update) = self.take_first_less_by_version(MAIN_PKG_VERSION) {
             if self.is_empty() {
