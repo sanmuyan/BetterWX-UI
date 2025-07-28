@@ -114,7 +114,7 @@ fn sort_and_click(fpids: &FilesPid, pos: &str) -> Result<()> {
         debug!("排列窗口失败: {:?}", e);
         ServicesError::ArrangeWindowError
     })?;
-    sleep(1000);
+    sleep(100);
     send_mouse_click_to_apps(fpids, pos).map_err(|e| {
         debug!("发送点击事件失败: {:?}", e);
         ServicesError::SendClickEventError
