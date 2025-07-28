@@ -114,6 +114,7 @@ fn sort_and_click(fpids: &FilesPid, pos: &str) -> Result<()> {
         debug!("排列窗口失败: {:?}", e);
         ServicesError::ArrangeWindowError
     })?;
+    sleep(1000);
     send_mouse_click_to_apps(fpids, pos).map_err(|e| {
         debug!("发送点击事件失败: {:?}", e);
         ServicesError::SendClickEventError
@@ -122,9 +123,18 @@ fn sort_and_click(fpids: &FilesPid, pos: &str) -> Result<()> {
 
 fn send_mouse_click_to_apps(fpids: &FilesPid, pos: &str) -> Result<()> {
     let pos = pos.split(",").collect::<Vec<_>>();
-    let x = pos[0].trim().parse::<i32>().unwrap_or(0);
-    let y = pos[1].trim().parse::<i32>().unwrap_or(0);
-    process::send_mouse_click_to_apps_use_scale(fpids, x, y)?;
+    if pos.len() != 4 {
+        return Err(ServicesError::InvalidShortcutError);
+    }
+    let w = pos[0].trim().parse::<i32>().unwrap_or(0);
+    let h = pos[1].trim().parse::<i32>().unwrap_or(0);
+    let x = pos[2].trim().parse::<i32>().unwrap_or(0);
+    let y = pos[3].trim().parse::<i32>().unwrap_or(0);
+    if w <= 0 || h <= 0 || x <= 0 || y <= 0{
+        return Err(ServicesError::InvalidShortcutError);
+    }
+    debug!("发送点击事件坐标: {:?}，初始窗口尺寸: {:?}", (x, y), (w, h));
+    process::send_mouse_click_to_apps_use_scale(fpids,w,h, x, y)?;
     Ok(())
 }
 fn try_get_pids_by_paths(files: &[String]) -> FilesPid {

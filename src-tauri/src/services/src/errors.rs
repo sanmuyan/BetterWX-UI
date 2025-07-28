@@ -36,6 +36,9 @@ pub enum ServicesError {
     #[error("一键启动失败，发送点击事件失败，请重试。")]
     SendClickEventError,
 
+    #[error("无效快捷方式，请删除重建。")]
+    InvalidShortcutError,
+
     #[error("未知错误")]
     UnkonwError,
     

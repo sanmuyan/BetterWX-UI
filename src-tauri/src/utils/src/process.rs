@@ -115,7 +115,7 @@ pub fn sort_apps(fpids: &FilesPid) -> Result<()> {
 
 fn try_get_app_size(fpids: &FilesPid) -> Result<(i32, i32)> {
     let mut app_size = (0, 0);
-    for (i,fpid) in fpids.0.iter().enumerate() {
+    for (i, fpid) in fpids.0.iter().enumerate() {
         let hwnd = &fpid.hwnd;
         match hwnd.get_app_size() {
             Ok(s) => {
@@ -132,34 +132,55 @@ fn try_get_app_size(fpids: &FilesPid) -> Result<(i32, i32)> {
     Ok(app_size)
 }
 
-pub fn send_mouse_click_to_apps_use_scale(fpids: &FilesPid, x: i32, y: i32) -> Result<()> {
+pub fn send_mouse_click_to_apps_use_scale(
+    fpids: &FilesPid,
+    w: i32,
+    h: i32,
+    x: i32,
+    y: i32,
+) -> Result<()> {
     if fpids.is_empty() {
         return Err(ProcessError::HwndsEmptyError.into());
     }
-    let scale = try_get_app_scale(fpids)?;
-    let real_x = (scale * x as f32) as i32;
-    let real_y = (scale * y as f32) as i32;
+    let app_size = try_get_app_size(fpids)?;
+
+    let scale_x = app_size.0 as f32 / w as f32;
+    let scale_y = app_size.1 as f32 / h as f32;
+    debug!(
+        "应用程序缩放比例: {:?},scale_x:{:?},scale_y:{:?}",
+        app_size, scale_x, scale_y
+    );
+    let real_x = (scale_x * x as f32) as i32;
+    let real_y = (scale_y * y as f32) as i32;
     for fpid in &fpids.0 {
-        let _ = fpid.hwnd.send_mouse_click(real_x, real_y);
+        debug!(
+            "发送 {:?} 点击事件实际坐标: {:?}",
+            fpid.hwnd,
+            (real_x, real_y)
+        );
+        let e = fpid.hwnd.send_mouse_click(real_x, real_y);
+        if e.is_err() {
+            debug!("发送点击事件失败: {:?}", e);
+        }
     }
     Ok(())
 }
 
-fn try_get_app_scale(fpids: &FilesPid) -> Result<f32> {
-    let mut scale = 1.0;
-    for (i,fpid) in fpids.0.iter().enumerate() {
-        let hwnd = &fpid.hwnd;
-        match hwnd.get_app_scale() {
-            Ok(s) => {
-                scale = s;
-                break;
-            }
-            Err(e) => {
-                if i == fpids.len() - 1 {
-                    return Err(e.into());
-                }
-            }
-        }
-    }
-    Ok(scale)
-}
+// fn try_get_app_scale(fpids: &FilesPid) -> Result<f32> {
+//     let mut scale = 1.0;
+//     for (i, fpid) in fpids.0.iter().enumerate() {
+//         let hwnd = &fpid.hwnd;
+//         match hwnd.get_app_scale() {
+//             Ok(s) => {
+//                 scale = s;
+//                 break;
+//             }
+//             Err(e) => {
+//                 if i == fpids.len() - 1 {
+//                     return Err(e.into());
+//                 }
+//             }
+//         }
+//     }
+//     Ok(scale)
+// }

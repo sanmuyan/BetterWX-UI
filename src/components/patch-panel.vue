@@ -171,7 +171,7 @@ async function handleMethod(data) {
     }
 }
 
-async function close(feature,delay=0) {
+async function close(feature, delay = 0) {
     let closed = await processApis.process_close_app(feature.target)
     if (closed && delay) {
         await sleep(delay)
@@ -221,8 +221,11 @@ async function coexist() {
 }
 
 async function del(data) {
-    await ruleApis.rule_del_coexist(props.data.code, data.num)
     let index = files.value.findIndex(file => file.index == data.num)
+    let file = files.value[index]
+    let cfeature = file?.features.find(feature => feature.code == "close")
+    await close(cfeature, 1000)
+    await ruleApis.rule_del_coexist(props.data.code, data.num)
     files.value.splice(index, 1)
     nums.value.delete(data.num)
     select()
