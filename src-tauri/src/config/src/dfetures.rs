@@ -59,6 +59,14 @@ const DEFAULT_FEATURE_STR: &str = r#"[
         "target": "${exe_path}"
     },
     {
+        "code": "note",
+        "name": "备注",
+        "description": "添加备注",
+        "inmain": true,
+        "incoexist": true,
+        "index": 130
+    },
+    {
         "code": "lnk",
         "name": "快捷",
         "description": "添加快捷方式到桌面",

@@ -27,11 +27,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { sleep } from '@/utils/tools.js'
-import * as updateApiss from '@/apis/update.js'
-import { Window } from '@tauri-apps/api/window'
-import { getVersion, getName } from '@tauri-apps/api/app'
+import { onMounted, ref } from "vue"
+import { sleep } from "@/utils/tools.js"
+import * as updateApiss from "@/apis/update.js"
+import { Window } from "@tauri-apps/api/window"
+import { getVersion, getName } from "@tauri-apps/api/app"
 
 const update = ref({})
 const showLoading = ref(true)
@@ -54,7 +54,7 @@ async function check_update() {
             if (info.force) {
                 return
             }else{
-                await sleep(3000)
+                await sleep(2000)
             }
         }
         console.log(info);
@@ -76,7 +76,7 @@ async function check_update() {
 
 const emit = defineEmits(["loaded"])
 function loaded(data) {
-    emit('loaded', data)
+    emit("loaded", data)
 }
 
 function setTitle(name, version) {

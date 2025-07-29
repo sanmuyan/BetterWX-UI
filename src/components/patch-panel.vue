@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, watch, inject, computed, nextTick } from 'vue'
+import { ref, watch, inject, computed, nextTick } from "vue"
 import CoexistItem from "@/components/coexist-item.vue"
 import * as ruleApis from "@/apis/rule.js"
 import * as cmdApis from "@/apis/cmd.js"
@@ -50,7 +50,7 @@ import * as shortcutApis from "@/apis/shortcut.js"
 import * as processApis from "@/apis/process.js"
 import * as storeApis from "@/apis/store.js"
 import * as tools from "@/utils/tools.js"
-import { sleep } from '../utils/tools'
+import { sleep } from "@/utils/tools"
 
 const props = defineProps({
     data: { type: Object, default: {} },
@@ -90,19 +90,19 @@ async function init() {
     showLoading.value = true
     try {
         rule.value = await ruleApis.rule_get_path(props.data.code);
+        console.log("获取安装路径", rule.value);
         if (!rule.value.installed) {
             console.error(installTag.value.name);
             return
         }
         let p1 = await ruleApis.rule_search_address(props.data.code);
+        console.log("获取搜索基址", p1);
         rule.value = { ...rule.value, ...p1 }
         files.value = await ruleApis.rule_walk_files(props.data.code);
+        console.log("获取文件列表", files.value);
         nums.value = new Set(files.value.map(file => file.index))
         set_select()
         set_note()
-        console.log("rule.value", rule.value);
-        console.log("search_address", p1);
-        console.log("files", files.value);
     } catch (error) {
         initError.value = error
         showToast(initError.value)
@@ -142,7 +142,7 @@ async function handleMethod(data) {
             await close(data.feature)
             break;
         case "lnk":
-            await shortcutApis.shortcut_to_desktop(data.feature.target, `${props.data.name}${data.num ? '#' + data.num : ""}`)
+            await lnk(data)
             break;
         case "lnk_all":
             await lnk_all(data)
@@ -184,6 +184,12 @@ async function close(feature, delay = 0) {
     if (closed && delay) {
         await sleep(delay)
     }
+}
+
+async function lnk(data) {
+    let text = notes.value[data.num] || data.num
+    let name = `${props.data.name}${text ? '#' + text : ""}`
+    await shortcutApis.shortcut_to_desktop(data.feature.target, name)
 }
 
 async function lnk_all(data) {
@@ -305,8 +311,19 @@ async function set_note() {
 }
 
 async function note(data) {
-    notes.value[data.num] = 
-    notes.value = JSON.parse(notes_str)
+    let note_text = notes.value[data.num]
+    inputDialog.value.fcode = data.feature.code
+    inputDialog.value.num = data.num
+    inputDialog.value.show = true
+    inputDialog.value.title = data.feature.description || data.feature.name
+    inputDialog.value.type = "note"
+    inputDialog.value.ovs = [
+        {
+            pname: data.feature.name,
+            text: note_text,
+            len: 40
+        }
+    ]
 }
 
 async function open_all(data) {
@@ -339,6 +356,7 @@ async function patch_input(data) {
     inputDialog.value.num = data.num
     inputDialog.value.show = true
     inputDialog.value.title = data.feature.name
+    inputDialog.value.type = "patch"
     inputDialog.value.ovs = ov
 }
 
@@ -347,7 +365,38 @@ async function input_cancle() {
 }
 
 async function input_confirm() {
+    switch (inputDialog.value.type) {
+        case "patch":
+            await input_confirm_patch()
+            break;
+        case "note":
+            await input_confirm_note()
+            break;
+        default:
+            throw new Error(`为实现的方法：${inputDialog.value.type}`)
+    }
+    inputDialog.value.show = false
+}
+
+async function input_confirm_note() {
+    let item = inputDialog.value.ovs[0]
+    if (item.text.length / 2 > item.len) {
+        showToast(`${item.pname} 输入的内容太多了`)
+        return
+    }
+    let num = inputDialog.value.num
+    let note = item.text
+    notes.value[num] = note
+    await storeApis.store_save(note_store_key.value, JSON.stringify(notes.value))
+
+}
+
+async function input_confirm_patch() {
     for (let item of inputDialog.value.ovs) {
+        if (item.text.length == 0 ) {
+            showToast(`${item.pname} 输入的内容不能为空`)
+            return
+        }
         let text = tools.text2hex(item.text)
         if (text.length / 2 > item.len) {
             showToast(`${item.pname} 输入的内容太多了`)
@@ -362,7 +411,6 @@ async function input_confirm() {
     let cfeature = file?.features.find(feature => feature.code == "close")
     await close(cfeature, 1000)
     await ruleApis.rule_patch_by_replace(props.data.code, num, fcode, ovs)
-    inputDialog.value.show = false
 }
 
 function get_file_by_num(num) {

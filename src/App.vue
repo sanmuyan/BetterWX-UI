@@ -30,7 +30,7 @@ import PatchPanel from "@/components/patch-panel.vue"
 import { useToast } from "primevue/usetoast"
 import * as storeApis from "@/apis/store.js"
 
-provide('showToast', showToast)
+provide("showToast", showToast)
 
 const toast = useToast()
 const update = ref({})
@@ -87,17 +87,17 @@ function showToast(payload) {
 
 const disableRefresh = () => {
     if (import.meta.env.DEV) return
-    document.addEventListener('keydown', function (event) {
+    document.addEventListener("keydown", function (event) {
         if (
-            event.key === 'F5' ||
-            event.key === 'F12' ||
-            (event.ctrlKey && event.key === 'r') ||
-            (event.metaKey && event.key === 'r')
+            event.key === "F5" ||
+            event.key === "F12" ||
+            (event.ctrlKey && event.key === "r") ||
+            (event.metaKey && event.key === "r")
         ) {
             event.preventDefault()
         }
     })
-    document.addEventListener('contextmenu', function (event) {
+    document.addEventListener("contextmenu", function (event) {
         event.preventDefault()
     })
 }

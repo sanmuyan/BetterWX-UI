@@ -3,14 +3,8 @@
 @import 'primeicons/primeicons.css';
 
 html{
-  font-size: 15px;
+  font-size: 14px;
   user-select: none;
-}
-
-a {
-  color: blue !important;
-  text-decoration: underline !important;
-  text-decoration-color: blue !important;
 }
 
 .my-border-color{

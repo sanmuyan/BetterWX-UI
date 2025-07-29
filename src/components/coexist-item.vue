@@ -51,12 +51,12 @@ const props = defineProps({
     note: { type: String, default: "" }
 })
 
-const emit = defineEmits(['event'])
+const emit = defineEmits(["event"])
 
 function handleEvent($event, feature) {
     console.log($event);
     console.log(feature);
-    emit('event', {
+    emit("event", {
         feature: feature,
         status: $event,
         num: props.num

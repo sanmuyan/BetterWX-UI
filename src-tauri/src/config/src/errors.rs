@@ -47,7 +47,7 @@ pub enum ConfigError {
     #[error("文件不存在：{0}")]
     FileNotExistsError(String),
 
-    #[error("解析默认功能失败")]
+    #[error("解析默认功能失败，请检查配置文件")]
     DefaultFeaturesDeserializeError,
 
     #[error("获取 {0} 数组成员失败，请检查配置文件")]

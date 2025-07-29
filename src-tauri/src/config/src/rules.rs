@@ -193,7 +193,8 @@ impl Rule {
                 );
             }
             Err(e) => {
-                error!("构建 {} 默认功能失败，{}", self.get_name(), e);
+                error!("构建 {} 默认功能失败，{:?}", self.get_name(), e);
+                return Err(e);
             }
         }
         Ok(self)
