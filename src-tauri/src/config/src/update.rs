@@ -35,9 +35,11 @@ impl Updates {
         if &main_ver == &self0_ver {
             return Ok(self.0.remove(0));
         }
-        if self.0.len() == 1 && (&main_ver < &self0_ver) {
+        if self.0.len() == 1 {
             let mut update = self.0.remove(0);
-            update.nversion = update.version.clone();
+            if &main_ver < &self0_ver {
+                update.nversion = update.version.clone();
+            }
             return Ok(update);
         }
         if let Ok(mut update) = self.take_first_less_by_version(MAIN_PKG_VERSION) {

@@ -4,13 +4,14 @@
     <Divider class="!m-0" />
     <ScrollPanel class="flex-1 min-h-0">
         <template v-for="(rule, index) in files" :key="index">
-            <CoexistItem :title="rule.name" :features="rule.features" @event="handleEvent" :num="rule.index">
+            <CoexistItem :title="rule.name" :features="rule.features" @event="handleEvent" :num="rule.index"
+                :note="notes[rule.index]">
             </CoexistItem>
             <Divider class="!m-0" />
         </template>
     </ScrollPanel>
     <Divider class="!m-0" />
-    <div class="flex flex-row items-center justify-between h-14 border-t-1 my-border-color">
+    <div class="flex flex-row items-center justify-between h-16 border-t-1 my-border-color">
         <div>
             <Tag :value="installTag.name" :severity="rule.installed ? 'success' : 'danger'" class="mr-1"></Tag>
             <Tag :value="patternTag.name" :severity="rule.supported ? 'success' : 'danger'"></Tag>
@@ -57,6 +58,8 @@ const props = defineProps({
 })
 
 const select_store_key = ref("")
+const note_store_key = ref("")
+const notes = ref({})
 const showToast = inject('showToast')
 const inited = ref(false)
 const initError = ref("")
@@ -74,6 +77,7 @@ watch(() => props.init, async (newValue) => {
         }
         if (!inited.value) {
             select_store_key.value = `${props.data.code}_select`
+            note_store_key.value = `${props.data.code}_note`
             init()
             inited.value = true
         }
@@ -95,6 +99,7 @@ async function init() {
         files.value = await ruleApis.rule_walk_files(props.data.code);
         nums.value = new Set(files.value.map(file => file.index))
         set_select()
+        set_note()
         console.log("rule.value", rule.value);
         console.log("search_address", p1);
         console.log("files", files.value);
@@ -156,6 +161,9 @@ async function handleMethod(data) {
             break;
         case "select":
             await select(data)
+            break;
+        case "note":
+            await note(data)
             break;
         case "open_all":
             await open_all(data)
@@ -266,6 +274,7 @@ async function select() {
     let ns = nfiles.map(file => file.index)?.join(",")
     storeApis.store_save(select_store_key.value, ns)
 }
+
 async function set_select() {
     if (!select_store_key.value) {
         showToast("缓存文件名无效")
@@ -280,6 +289,24 @@ async function set_select() {
             }
         })
     })
+}
+
+async function set_note() {
+    if (!note_store_key.value) {
+        showToast("缓存文件名无效")
+        return
+    }
+    let notes_str = await storeApis.store_read(note_store_key.value)
+    if (!notes_str) {
+        return
+    }
+    notes.value = JSON.parse(notes_str)
+    return notes.value
+}
+
+async function note(data) {
+    notes.value[data.num] = 
+    notes.value = JSON.parse(notes_str)
 }
 
 async function open_all(data) {
