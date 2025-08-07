@@ -138,7 +138,7 @@ fn send_mouse_click_to_apps(fpids: &FilesPid, pos: &str) -> Result<()> {
     Ok(())
 }
 fn try_get_pids_by_paths(files: &[String]) -> FilesPid {
-    for i in 0..10 {
+    for i in 0..20 {
         debug!("第 {} 次，try_get_pids_by_paths 尝试获取程序进程ID", i + 1);
         let fpids = get_pids_by_paths(&files);
         if fpids.len() == files.len() || i == 9 {

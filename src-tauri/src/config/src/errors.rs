@@ -56,6 +56,9 @@ pub enum ConfigError {
     #[error("依赖补丁 {0} 未找到，请检查配置文件")]
     DependPatchNotFoundError(String),
 
+    #[error("获取路径替换规则无效 {0} ，请检查配置文件")]
+    InvalidPatternReplace(String),
+
     #[error("获取变量值 {0} 失败")]
     GetVariabledValueError(String),
 

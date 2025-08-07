@@ -3,6 +3,7 @@ use crate::errors::Result;
 use crate::serders::skippers::skip_if_empty;
 use crate::variables::Variable;
 use crate::variables::Variables;
+use log::debug;
 use log::error;
 use log::info;
 use log::trace;
@@ -10,10 +11,12 @@ use macros::FieldDescGetters;
 use macros::FieldNameGetters;
 use macros::ImpConfigVecIsEmptyTrait;
 use macros::SortedSerializeByIndex;
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
 use std::path::Path;
+use utils::empty::Empty;
 use utils::runtime::Runtime;
 use winsys::fileinfo::FileInfo;
 use winsys::registry::Registry;
@@ -67,6 +70,9 @@ pub struct PathItem {
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub file: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub fix: PathFix,
 }
 
 impl PathItem {
@@ -81,21 +87,25 @@ impl PathItem {
                     continue;
                 }
             };
+            let value = self.fix.run(value)?;
             let mut temp_vars = Variables::default();
             temp_vars.set_value(VALUE_CODE, &value);
-            let path = path_variables.substitute(temp_vars.substitute(&self.path));
-            temp_vars.set_value(PATH_CODE, &path);
-            let file = path_variables.substitute(temp_vars.substitute(&self.file));
-            temp_vars.set_value(FILE_CODE, &file);
-            if !Path::new(&file).exists() {
-                error!(
-                    "{}。失败！错误：{}",
-                    msg,
-                    ConfigError::GetPathCheckFailedError(file),
-                );
-                continue;
+            if !self.path.is_empty() {
+                let path = path_variables.substitute(temp_vars.substitute(&self.path));
+                temp_vars.set_value(PATH_CODE, &path);
             }
-
+            if !self.file.is_empty() {
+                let file = path_variables.substitute(temp_vars.substitute(&self.file));
+                temp_vars.set_value(FILE_CODE, &file);
+                if !Path::new(&file).exists() {
+                    error!(
+                        "{}。失败！错误：{}",
+                        msg,
+                        ConfigError::GetPathCheckFailedError(file),
+                    );
+                    continue;
+                }
+            }
             info!("{}。成功！结果：{}", msg, value);
             let v1 = Variable::new(self.code.clone(), value);
             let vs = Variables(vec![v1]);
@@ -119,16 +129,7 @@ pub struct Method {
     pub retry: usize,
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
-    pub unprefix: String,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "skip_if_empty")]
-    pub unsuffix: String,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "skip_if_empty")]
-    pub prefix: String,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "skip_if_empty")]
-    pub suffix: String,
+    pub fix: PathFix,
 }
 
 impl Method {
@@ -163,7 +164,7 @@ impl Method {
 
     fn get_path_by_calculate(&mut self) -> Result<String> {
         let value = self.get_required_arg(VALUE_CODE)?.to_string();
-        let value = self.fix_result(value);
+        let value = self.fix.run(value)?;
         Ok(value)
     }
 
@@ -172,7 +173,7 @@ impl Method {
         trace!("get_path_by_fileinfo path:{:?}", path);
         let value = FileInfo::new(path).get_version()?;
         trace!("get_path_by_fileinfo value:{:?}", value);
-        let value = self.fix_result(value);
+        let value = self.fix.run(value)?;
         Ok(value)
     }
 
@@ -183,14 +184,14 @@ impl Method {
         trace!("get_path_by_regedit field:{:?}", field);
         let value = Registry::new(&path)?.read_value(&field)?;
         trace!("get_path_by_regedit value:{:?}", value);
-        let value = self.fix_result(value);
+        let value = self.fix.run(value)?;
         Ok(value)
     }
 
     fn get_path_by_runtime(&mut self) -> Result<String> {
         let exe_path = Runtime::current_dir()?.to_string_lossy().to_string();
         trace!("get_path_by_runtime exe_path:{:?}", exe_path);
-        let value = self.fix_result(exe_path);
+        let value = self.fix.run(exe_path)?;
         Ok(value)
     }
 
@@ -201,30 +202,6 @@ impl Method {
             .ok_or(ConfigError::ConfigFieldMissing(key.to_string()))?
             .get_value()
             .to_string())
-    }
-
-    fn fix_result<S: Into<String>>(&self, result: S) -> String {
-        let mut result = result.into();
-        if !self.unprefix.is_empty() {
-            let index = result.find(&self.unprefix).unwrap_or(0);
-            if index > 0 {
-                result = result[index + self.unprefix.len()..].to_string();
-            }
-        }
-        if !self.unsuffix.is_empty() {
-            let index = result.find(&self.unsuffix).unwrap_or(0);
-            if index > 0 {
-                result = result[..index].to_string();
-            }
-        }
-        if !self.prefix.is_empty() {
-            result = format!("{}{}", self.prefix, result);
-        }
-        if !self.suffix.is_empty() {
-            result = format!("{}{}", result, self.suffix);
-        }
-        trace!("fix_result {:?}", result);
-        result
     }
 }
 
@@ -245,5 +222,69 @@ impl Display for MethodType {
             MethodType::FileInfo => write!(f, "文件信息"),
             MethodType::Regedit => write!(f, "注册表"),
         }
+    }
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct PathFix {
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub unprefix: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub unsuffix: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub prefix: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub suffix: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub pattern: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub replace: String,
+}
+
+impl PathFix {
+    fn run<S: Into<String>>(&self, result: S) -> Result<String> {
+        let mut result = result.into();
+        if !self.unprefix.is_empty() {
+            let index = result.find(&self.unprefix).unwrap_or(0);
+            if index > 0 {
+                result = result[index + self.unprefix.len()..].to_string();
+            }
+        }
+        if !self.unsuffix.is_empty() {
+            let index = result.find(&self.unsuffix).unwrap_or(0);
+            if index > 0 {
+                result = result[..index].to_string();
+            }
+        }
+        if !self.pattern.is_empty() {
+            let re = Regex::new(&self.pattern)
+                .map_err(|_| ConfigError::InvalidPatternReplace(self.pattern.to_string()))?;
+            result = re.replace(&result, &self.replace).to_string();
+        }
+        if !self.prefix.is_empty() {
+            result = format!("{}{}", self.prefix, result);
+        }
+        if !self.suffix.is_empty() {
+            result = format!("{}{}", result, self.suffix);
+        }
+        debug!("fix_result {:?}", result);
+        Ok(result)
+    }
+}
+
+impl Empty for PathFix {
+    fn is_empty(&self) -> bool {
+        self.unprefix.is_empty()
+            && self.unsuffix.is_empty()
+            && self.prefix.is_empty()
+            && self.suffix.is_empty()
+            && self.pattern.is_empty()
+            && self.replace.is_empty()
     }
 }

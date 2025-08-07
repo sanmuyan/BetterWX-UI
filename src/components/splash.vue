@@ -11,8 +11,7 @@
         </div>
     </div>
     <!-- 检测到软件更新 -->
-    <Dialog class="not-select" v-model:visible="update.force" modal header="提示" style="width: 20rem;"
-        :closable="update.notforce == true">
+    <Dialog class="not-select" v-model:visible="showUpdateDialog" modal header="提示" style="width: 20rem;">
         <div class="flex flex-col">
             <label class="mb-1">{{ `发现新版本: ${update.nversion}` }}</label>
             <label class="mb-2 text-prewarp">{{ update.description }}</label>
@@ -27,7 +26,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue"
+import { onMounted, ref,computed } from "vue"
 import { sleep } from "@/utils/tools.js"
 import * as updateApiss from "@/apis/update.js"
 import { Window } from "@tauri-apps/api/window"
@@ -91,4 +90,8 @@ async function addMsg(msg, delay = 0) {
     }
     await sleep(delay)
 }
+
+const showUpdateDialog = computed(() => {
+    return update.value.nversion && update.value.force
+})
 </script>

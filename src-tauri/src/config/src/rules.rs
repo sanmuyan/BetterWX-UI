@@ -216,9 +216,10 @@ impl Rule {
         self.check_is_search_type()?;
         let mut rules = Rules::default();
         let mut tasks = JoinSet::new();
-
+        let has_coexists = self.features.get(COEXISTS_CODE).is_ok();
+        let max_num = if has_coexists { 10 } else { 1 };
         // 启动所有异步任务
-        for num in 0..10 {
+        for num in 0..max_num {
             let rule = self.clone();
             tasks.spawn(async move {
                 let (_, name) = convert_num(num);

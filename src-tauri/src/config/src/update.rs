@@ -32,7 +32,7 @@ impl Updates {
         }
         let main_ver = Version::new(MAIN_PKG_VERSION);
         let self0_ver = Version::new(self.0[0].version.version.as_str());
-        if &main_ver == &self0_ver {
+        if &main_ver >= &self0_ver {
             return Ok(self.0.remove(0));
         }
         if self.0.len() == 1 {
