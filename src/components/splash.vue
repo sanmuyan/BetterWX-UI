@@ -17,7 +17,7 @@
             <label class="mb-2 text-prewarp">{{ update.description }}</label>
             <div class="flex items-center justify-center space-x-4 my-4">
                 <template v-for="(button, index) in update.buttons" :key="index">
-                    <Button :label="button.name" @click="openUrl(button.url)" size="small"
+                    <Button :label="button.name" @click="openUrl(button.data)" size="small"
                         :severity="button.severity ? button.severity : ''" />
                 </template>
             </div>
@@ -26,11 +26,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref,computed } from "vue"
+import { onMounted, ref, computed } from "vue"
 import { sleep } from "@/utils/tools.js"
 import * as updateApiss from "@/apis/update.js"
 import { Window } from "@tauri-apps/api/window"
 import { getVersion, getName } from "@tauri-apps/api/app"
+import { cmd_open_url } from "@/apis/cmd.js"
 
 const update = ref({})
 const showLoading = ref(true)
@@ -52,7 +53,7 @@ async function check_update() {
             await addMsg(`发现新版本 v${info.nversion}，请更新`)
             if (info.force) {
                 return
-            }else{
+            } else {
                 await sleep(2000)
             }
         }
@@ -94,4 +95,8 @@ async function addMsg(msg, delay = 0) {
 const showUpdateDialog = computed(() => {
     return update.value.nversion && update.value.force
 })
+
+function openUrl(url) {
+    cmd_open_url(url)
+}
 </script>
