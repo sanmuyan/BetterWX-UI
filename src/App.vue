@@ -81,7 +81,7 @@ function showToast(payload) {
     } else {
         defaultPayload = { ...defaultPayload, ...payload }
     }
-    defaultPayload.severity = defaultPayload.error ? "error" : "contrast"
+    defaultPayload.severity = defaultPayload.severity ? defaultPayload.severity : "success"
     toast.add(defaultPayload)
 }
 
@@ -98,7 +98,7 @@ function showToastInfo(payload) {
     } else {
         defaultPayload = { ...defaultPayload, ...payload }
     }
-    defaultPayload.severity = defaultPayload.severity ? defaultPayload.severity : "contrast"
+    defaultPayload.severity = defaultPayload.severity ? defaultPayload.severity : "success"
     toast.add(defaultPayload)
 }
 
