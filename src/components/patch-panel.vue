@@ -110,6 +110,22 @@ async function init() {
     } finally {
         showLoading.value = false
     }
+    await handleMethod(openAllData)
+}
+
+const openAllData = {
+  "feature": {
+  "code": "open_all",
+      "index": 32,
+      "name": "一键启动",
+      "description": "所有选中的软件",
+      "inhead": true,
+      "bntype": "button",
+      "supported": true,
+      "target": "280,380,70,290"
+},
+  "status": true,
+    "num": 0
 }
 
 async function handleEvent(data) {
