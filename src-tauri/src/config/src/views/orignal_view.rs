@@ -4,7 +4,7 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrignalViews(pub Vec<OrignalView>);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug,Default, Clone, Serialize, Deserialize)]
 pub struct OrignalView {
     pub pcode: String,
     pub pname: String,

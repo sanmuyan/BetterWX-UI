@@ -101,6 +101,6 @@ const DEFAULT_FEATURE_STR: &str = r#"[
         "incoexist": true,
         "index": 151,
         "disabled": false,
-        "severity": "danger"
+        "severity": "warn"
     }
 ]"#;

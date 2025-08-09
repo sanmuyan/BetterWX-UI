@@ -1,4 +1,3 @@
-use crate::views::orignal_view::OrignalViews;
 use crate::ConfigVecWrapperTrait;
 use crate::cache::Cache;
 use crate::convert_num;
@@ -15,6 +14,7 @@ use crate::variables::ISMAIN_CODE;
 use crate::variables::NUM_CODE;
 use crate::variables::NUM_HEX_CODE;
 use crate::variables::Variables;
+use crate::views::orignal_view::OrignalViews;
 use log::debug;
 use log::error;
 use log::info;
@@ -362,7 +362,7 @@ impl Rule {
             // 递归前检查
             self.patches.check_files_and_del(true, use_backfile)?;
         }
-        
+
         // 检验依赖功能已经开启
         self.features
             .check_dependfeatures(&feature.dependfeatures)?;
@@ -397,19 +397,14 @@ impl Rule {
         Ok(())
     }
 
-     pub fn patch_by_replace(
-        &mut self,
-        fcode: &str,
-        ovs: &OrignalViews,
-    ) -> Result<()> {
-
+    pub fn patch_by_replace(&mut self, fcode: &str, ovs: &OrignalViews) -> Result<()> {
         let mut cache = Cache::new();
         if self.rtype != RuleType::Fileed {
             return Err(ConfigError::IsNotFileRule.into());
         }
         let feature = self.features.get(fcode)?;
         // 执行补丁功能
-        self.patches.patch_by_replace(&mut cache,feature,ovs)?;
+        self.patches.patch_by_replace(&mut cache, feature, ovs)?;
 
         // 写入到文件
         cache.save()?;
@@ -435,10 +430,10 @@ impl Rule {
 
 /// read
 impl Rule {
-    pub fn read_orignal(&self,fcode: &str) -> Result<OrignalViews> {
-        let mut cache =  Cache::new();
+    pub fn read_orignal(&self, fcode: &str) -> Result<OrignalViews> {
+        let mut cache = Cache::new();
         let feature = self.features.get(fcode)?;
-        self.patches.read_orignal(&mut cache,&feature)
+        self.patches.read_orignal(&mut cache, &feature)
     }
 }
 

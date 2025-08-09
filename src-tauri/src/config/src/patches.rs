@@ -108,6 +108,9 @@ impl Patches {
         for code in &feature.dependpatches {
             let patch = self.find_patch_by_pattern_code(code.as_str())?;
             let pattern = self.get_pattern(code.as_str())?;
+            if pattern.disabled {
+                continue;
+            }
             let upatch = Self::build_upatch(patch, data_cache, false, &feature.code, false)?;
             let mut ov = pattern.read_orignal(upatch)?;
             ov.pcode = code.to_string();

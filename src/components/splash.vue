@@ -4,17 +4,17 @@
             <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="transparent" />
             <TransitionGroup name="fade" tag="div" class="text-center w-full h-60 overflow-hidden">
                 <div v-for="(message, index) in mesages" :key="index" :style="{ opacity: 1 - index * 0.15 }"
-                    class="w-full text-center">
+                    class="w-full text-center  whitespace-pre-line">
                     {{ message }}
                 </div>
             </TransitionGroup>
         </div>
     </div>
     <!-- 检测到软件更新 -->
-    <Dialog class="not-select" v-model:visible="showUpdateDialog" modal header="提示" style="width: 20rem;">
+    <Dialog class="not-select" v-model:visible="showUpdateDialog" modal header="提示" style="width: 20rem;" :closable="false">
         <div class="flex flex-col">
-            <label class="mb-1">{{ `发现新版本: ${update.nversion}` }}</label>
-            <label class="mb-2 text-prewarp">{{ update.description }}</label>
+            <label class="mb-1 text-prewarp whitespace-pre-line">{{ `发现新版本: ${update.nversion}` }}</label>
+            <label class="mb-2 text-prewarp whitespace-pre-line">{{ update.description }}</label>
             <div class="flex items-center justify-center space-x-4 my-4">
                 <template v-for="(button, index) in update.buttons" :key="index">
                     <Button :label="button.name" @click="openUrl(button.data)" size="small"
@@ -51,6 +51,7 @@ async function check_update() {
         setTitle(info.name || appName, appVersion)
         if (info.nversion) {
             await addMsg(`发现新版本 v${info.nversion}，请更新`)
+            await addMsg(`${info.description}`)
             if (info.force) {
                 return
             } else {

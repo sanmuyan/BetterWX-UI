@@ -61,6 +61,8 @@ const select_store_key = ref("")
 const note_store_key = ref("")
 const notes = ref({})
 const showToast = inject('showToast')
+const showToastInfo = inject('showToastInfo')
+
 const inited = ref(false)
 const initError = ref("")
 const rule = ref({})
@@ -120,6 +122,9 @@ async function handleEvent(data) {
     showLoading.value = true
     try {
         await handleMethod(data)
+        if (data.status && data.feature.tips) {
+            showToastInfo(data.feature.tips)
+        }
     } catch (error) {
         showToast(error)
         console.error(error);

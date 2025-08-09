@@ -80,6 +80,9 @@ const is_disabled = computed(() => (feature) => {
 })
 
 const isShow = computed(() => (feature, bntype, inright) => {
+    if (feature.disabled) {
+        return false
+    }
     if ((inright && feature.index < 100) || (!inright && feature.index >= 100)) {
         return false
     }

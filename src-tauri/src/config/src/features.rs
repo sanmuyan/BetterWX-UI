@@ -43,7 +43,7 @@ impl Features {
 
     pub fn set_status(&mut self, patches: &Patches) -> Result<()> {
         for feature in &mut self.0 {
-            if !feature.supported {
+            if !feature.supported || feature.disabled {
                 feature.status = false;
                 continue;
             }
@@ -179,6 +179,9 @@ pub struct Feature {
     pub severity: String, // 按钮显示样式
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
+    pub tips: String, // 提示
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
     pub disabled: bool, // 是否禁用
     #[serde(default = "default_true")]
     #[serde(skip_serializing_if = "skip_if_empty")]
@@ -220,15 +223,19 @@ impl Feature {
         // 修复 头部功能 target ,或者 构建时 target
         if !self.dependpatches.is_empty() && num == 10 && patches.is_searched() {
             let mut all_supported = true;
+            let mut all_disabled = true;
             for code in self.dependpatches.iter() {
-                let supported = patches.get_pattern(code)?.supported;
-                all_supported = all_supported && supported;
+                let p = patches.get_pattern(code)?;
+                all_supported = all_supported && p.supported;
+                all_disabled = all_disabled && p.disabled;
             }
+            self.disabled = all_disabled;
             self.supported = all_supported;
-            trace!(
-                "功能：{}，修正supported：{}",
+            log::error!(
+                "功能：{}，修正 supported：{} ,disabled：{}",
                 self.get_name(),
-                self.supported
+                self.supported,
+                self.disabled
             );
         }
 

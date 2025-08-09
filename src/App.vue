@@ -31,6 +31,7 @@ import { useToast } from "primevue/usetoast"
 import * as storeApis from "@/apis/store.js"
 
 provide("showToast", showToast)
+provide("showToastInfo", showToastInfo)
 
 const toast = useToast()
 const update = ref({})
@@ -73,8 +74,7 @@ function showToast(payload) {
         summary: "消息",
         detail: "",
         severity: "error",
-        life: 2500,
-        error: true
+        life: 2500
     }
     if (typeof payload === "string") {
         defaultPayload.detail = payload
@@ -82,6 +82,23 @@ function showToast(payload) {
         defaultPayload = { ...defaultPayload, ...payload }
     }
     defaultPayload.severity = defaultPayload.error ? "error" : "contrast"
+    toast.add(defaultPayload)
+}
+
+function showToastInfo(payload) {
+    payload = payload.message ? payload.message : payload
+    let defaultPayload = {
+        summary: "消息",
+        detail: "",
+        severity: "success",
+        life: 2000
+    }
+    if (typeof payload === "string") {
+        defaultPayload.detail = payload
+    } else {
+        defaultPayload = { ...defaultPayload, ...payload }
+    }
+    defaultPayload.severity = defaultPayload.severity ? defaultPayload.severity : "contrast"
     toast.add(defaultPayload)
 }
 

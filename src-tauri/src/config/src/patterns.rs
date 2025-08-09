@@ -51,13 +51,13 @@ impl Patterns {
 }
 impl Patterns {
     pub fn is_supported(&self) -> bool {
-        self.0.iter().all(|pattern| pattern.supported)
+        self.0.iter().all(|pattern| pattern.disabled || pattern.supported)
     }
 
     pub fn is_searched(&self) -> bool {
         self.0
             .iter()
-            .any(|pattern| pattern.groups.is_empty() && pattern.group.is_none())
+            .any(|pattern| pattern.searched)
     }
 
     pub fn is_patched(&self) -> bool {
@@ -93,6 +93,9 @@ pub struct Pattern {
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub patched: bool,
+        #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub searched: bool,
 }
 
 impl Pattern {
@@ -147,6 +150,13 @@ impl Pattern {
     }
 
     pub fn search(&mut self, upatch: &UPatch) -> Result<()> {
+        // 禁用不处理
+        if self.disabled {
+            self.supported = true;
+            self.searched = true;
+            return Ok(());
+        }
+
         if !self.supported
             && let Some(group) = &self.group
         {
@@ -180,15 +190,25 @@ impl Pattern {
     }
 
     pub fn patch(&mut self, upatch: &mut UPatch, status: bool) -> Result<()> {
+        debug!("开始执行 {} 补丁", self.get_name());
+        // 禁用不处理
+        if self.disabled {
+            debug!("开始执行 {} 补丁disabled  pass", self.get_name());
+            return Ok(());
+        }
         if self.addresses.is_empty() {
             return Err(ConfigError::DependPatchNotFoundError(self.get_name().to_string()).into());
         }
-        debug!("开始执行 {} 补丁", self.get_name());
         self.addresses.patch(upatch, status)?;
         Ok(())
     }
 
      pub fn patch_by_replace(&mut self, upatch: &mut UPatch, replace: &str) -> Result<()> {
+        // 禁用不处理
+        if self.disabled {
+            return Ok(());
+        }
+
         if self.addresses.is_empty() {
             return Err(ConfigError::DependPatchNotFoundError(self.get_name().to_string()).into());
         }
@@ -198,6 +218,11 @@ impl Pattern {
     } 
 
     pub fn read_orignal(&self, upatch: &mut UPatch) ->Result<OrignalView> {
+        // 禁用不处理
+        if self.disabled {
+            return Ok(OrignalView::default());
+        }
+
         if self.addresses.is_empty() {
             return Err(ConfigError::DependPatchNotFoundError(self.get_name().to_string()).into());
         }

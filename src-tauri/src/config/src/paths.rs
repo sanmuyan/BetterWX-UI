@@ -147,6 +147,7 @@ impl Method {
                 MethodType::Regedit => self.get_path_by_regedit(),
                 MethodType::FileInfo => self.get_path_by_fileinfo(),
                 MethodType::Calculate => self.get_path_by_calculate(),
+                MethodType::ReadFile => self.get_path_by_readfile(),
             };
             match result {
                 Ok(r) => {
@@ -195,6 +196,27 @@ impl Method {
         Ok(value)
     }
 
+    fn get_path_by_readfile(&mut self) -> Result<String> {
+        let path = self.get_required_arg(PATH_CODE)?;
+        trace!("get_path_by_readfile path:{:?}", path);
+        let value = self.get_required_arg(VALUE_CODE)?;
+        trace!("get_path_by_readfile value:{:?}", value);
+        let re = Regex::new(&value)
+            .map_err(|_| ConfigError::InvalidPatternReplace(value.to_string()))?;
+        let data = std::fs::read_to_string(&path)?;
+        let result = re.captures(&data);
+        if let Some(caps) = result {
+            let result = caps.get(1).map(|m| m.as_str().to_string());
+            if let Some(result) = result {
+                trace!("get_path_by_readfile value  captures get:{:?}", result);
+                let value = self.fix.run(result)?;
+                trace!("get_path_by_readfile value  fix:{:?}", value);
+                return Ok(value);
+            }
+        }
+        Err(ConfigError::GetPathCheckFailedError(path.to_string()).into())
+    }
+
     fn get_required_arg(&self, key: &str) -> Result<String> {
         Ok(self
             .args
@@ -212,6 +234,7 @@ pub enum MethodType {
     Calculate,
     FileInfo,
     Regedit,
+    ReadFile,
 }
 
 impl Display for MethodType {
@@ -221,6 +244,7 @@ impl Display for MethodType {
             MethodType::Calculate => write!(f, "计算"),
             MethodType::FileInfo => write!(f, "文件信息"),
             MethodType::Regedit => write!(f, "注册表"),
+            MethodType::ReadFile => write!(f, "读取文件"),
         }
     }
 }

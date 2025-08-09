@@ -21,7 +21,11 @@ pub struct Groups(pub Vec<Group>);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Group {
     pub version: Version,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
     pub pattern: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
     pub replace: String,
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
