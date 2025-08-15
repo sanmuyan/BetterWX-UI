@@ -118,6 +118,8 @@ impl Rule {
         let mut cache = Cache::new();
         rule.patches.search(&mut cache, self.get_name())?;
         self.patches.clone_pattern(&rule.patches)?;
+        let pvariables = Variables::try_from(&self.patches)?;
+        self.variables.extend(pvariables);
         self.rtype = RuleType::Search;
         self.supported = self.patches.is_supported();
         self.patched = self.patches.is_patched();
@@ -308,6 +310,7 @@ impl Rule {
         rule.variables.set_value(ISMAIN_CODE, ismain);
         rule.variables.set_value(NUM_CODE, num);
         rule.variables.set_value(NUM_HEX_CODE, num_hex);
+        println!("rule.variables {:?}", rule.variables);
         rule.init_variables()?.init_patches()?;
         if num == 10 {
             return Ok(rule);
@@ -368,14 +371,18 @@ impl Rule {
             .check_dependfeatures(&feature.dependfeatures)?;
 
         // 关闭互斥功能
-        if status {
-            for code in &feature.mutexfeatures {
-                if let Ok(feature) = self.features.get(code)
-                    && feature.status
-                {
-                    debug!("关闭互斥功能 {} ", feature.get_name());
-                    self.patch(code, false, Some(cache))?;
-                }
+        let close_features = if status {
+            &feature.mutexfeatures
+        // 关闭需要同步关闭的功能
+        } else {
+            &feature.syncclosefeatures
+        };
+        for code in close_features {
+            if let Ok(feature) = self.features.get(code)
+                && feature.status
+            {
+                debug!("关闭功能 {} ", feature.get_name());
+                self.patch(code, false, Some(cache))?;
             }
         }
         // 执行补丁功能

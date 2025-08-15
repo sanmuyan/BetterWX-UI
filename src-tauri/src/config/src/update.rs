@@ -37,7 +37,7 @@ impl Updates {
         }
         if self.0.len() == 1 {
             let mut update = self.0.remove(0);
-            if &main_ver < &self0_ver {
+            if &main_ver < &self0_ver && update.nversion == Version::default() {
                 update.nversion = update.version.clone();
             }
             return Ok(update);
@@ -58,7 +58,9 @@ impl Updates {
                 config,
                 readme
             );
-            update.nversion = update0.version.clone();
+            if update.nversion == Version::default() {
+                update.nversion = update0.version.clone();
+            }
             return Ok(update);
         }
         Err(UpdatesError::ForceUpdate(self.0[0].version.to_string()).into())

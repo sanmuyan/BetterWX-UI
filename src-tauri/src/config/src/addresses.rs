@@ -16,9 +16,9 @@ use utils::tools::replace_wildcards;
 pub struct Addresses(pub Vec<Address>);
 
 impl Addresses {
-    pub fn init(&mut self, variables: &crate::variables::Variables) -> Result<()> {
+    pub fn init(&mut self, variables: &crate::variables::Variables,pattern_code:&str) -> Result<()> {
         for address in &mut self.0 {
-            address.init(variables)?;
+            address.init(variables,pattern_code)?;
         }
         Ok(())
     }
@@ -36,10 +36,12 @@ impl Addresses {
                 Ok(orignal) => {
                     debug!("地址：{}， 原始补丁：{:?}", pos, orignal);
                     debug!("地址：{}， 替换补丁：{:?}", pos, replace);
+                    let start_rva = upatch.foa_to_rva(pos as u64)? as usize;
                     addresses.push(Address::new(
                         orignal,
                         replace.to_string(),
                         pos,
+                        start_rva,
                         len,
                         usereplace,
                     ));
@@ -113,6 +115,9 @@ pub struct Address {
     pub start: usize,
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
+    pub start_rva: usize,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
     pub len: usize,
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
@@ -123,20 +128,22 @@ pub struct Address {
 }
 
 impl Address {
-    pub fn new(orignal: String, replace: String, start: usize, len: usize, patched: bool) -> Self {
+    pub fn new(orignal: String, replace: String, start: usize,start_rva: usize, len: usize, patched: bool) -> Self {
         Self {
             orignal,
             replace,
             start,
+            start_rva,
             len,
             end: start + len,
             patched,
         }
     }
 
-    pub fn init(&mut self, variables: &Variables) -> Result<()> {
+    pub fn init(&mut self, variables: &Variables,pattern_code:&str) -> Result<()> {
         let _ = variables.get_num_hex()?;
         let mut replace = self.replace.to_string();
+        replace = variables.substitute_add(replace,false,pattern_code)?;
         replace = variables.substitute(replace);
         replace = replace_ellipsis(replace.as_str(), self.orignal.as_ref())?;
         self.replace = replace_wildcards(replace.as_str(), self.orignal.as_ref())?;

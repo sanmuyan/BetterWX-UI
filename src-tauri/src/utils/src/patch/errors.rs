@@ -31,4 +31,13 @@ pub enum UPatchError {
 
     #[error("无效的16进制数据")]
     InvalidHexData,
+
+    #[error("无效的跳转偏移量数据")]
+    InvalidOffsetData,
+
+    #[error("跳转偏移量超出范围")]
+    OffsetOutRangeError,
+
+    #[error("FOA转换RVA失败")]
+    FOAToRVAError,
 }

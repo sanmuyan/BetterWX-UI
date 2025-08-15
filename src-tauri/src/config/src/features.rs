@@ -165,6 +165,9 @@ pub struct Feature {
     pub description: String, // 描述
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
+    pub detaildesc: String, // 描述
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
     pub inhead: bool, // 是否头部功能区显示
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
@@ -207,6 +210,9 @@ pub struct Feature {
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub mutexfeatures: Vec<String>, // 互斥功能
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub syncclosefeatures: Vec<String>, // 同步关闭
 }
 
 impl Feature {

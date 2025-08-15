@@ -23,10 +23,11 @@
         </div>
     </div>
     <Dialog v-model:visible="inputDialog.show" modal :header="inputDialog.title" class="w-120" :closable="false">
+        <div v-if="inputDialog.detaildesc" class="text-ellipsis mb-2 font-bold">{{ inputDialog.detaildesc }}</div>
         <div class="flex flex-col">
             <template v-for="(item, index) in inputDialog.ovs" :key="index">
                 <div class="flex flex-col justify-center">
-                    <b class="text-ellipsis mb-1">{{ item.pname }}</b>
+                    <div class="text-ellipsis mb-1">{{ item.pname }}</div>
                     <InputText class="w-full mb-1" type="text" v-model="item.text" :invalid="inputInvalid(item)">
                     </InputText>
                 </div>
@@ -317,18 +318,14 @@ async function set_note() {
 
 async function note(data) {
     let note_text = notes.value[data.num]
-    inputDialog.value.fcode = data.feature.code
-    inputDialog.value.num = data.num
-    inputDialog.value.show = true
-    inputDialog.value.title = data.feature.description || data.feature.name
-    inputDialog.value.type = "note"
-    inputDialog.value.ovs = [
+    let ovs = [
         {
             pname: data.feature.name,
             text: note_text,
             len: 40
         }
     ]
+    setDialogData(data,"note",ovs)
 }
 
 async function open_all(data) {
@@ -353,16 +350,22 @@ async function close_all(data) {
 }
 
 async function patch_input(data) {
-    let ov = await ruleApis.rule_read_orignal(props.data.code, data.num, data.feature.code)
-    ov.forEach(item => {
+    let ovs = await ruleApis.rule_read_orignal(props.data.code, data.num, data.feature.code)
+    ovs.forEach(item => {
         item.text = tools.hex2text(item.orignal)
     })
+    setDialogData(data,"patch",ovs)
+}
+
+function setDialogData(data,type,ovs) {
     inputDialog.value.fcode = data.feature.code
     inputDialog.value.num = data.num
     inputDialog.value.show = true
-    inputDialog.value.title = data.feature.name
-    inputDialog.value.type = "patch"
-    inputDialog.value.ovs = ov
+    inputDialog.value.title = data.feature.description || data.feature.name
+    inputDialog.value.description = data.feature.description
+    inputDialog.value.detaildesc = data.feature.detaildesc
+    inputDialog.value.type = type
+    inputDialog.value.ovs = ovs
 }
 
 async function input_cancle() {
@@ -398,7 +401,7 @@ async function input_confirm_note() {
 
 async function input_confirm_patch() {
     for (let item of inputDialog.value.ovs) {
-        if (item.text.length == 0 ) {
+        if (item.text.length == 0) {
             showToast(`${item.pname} 输入的内容不能为空`)
             return
         }

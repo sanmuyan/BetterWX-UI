@@ -143,7 +143,7 @@ impl Pattern {
         if !self.addresses.is_empty() {
             //初始化 patched
             self.patched = false;
-            self.addresses.init(variables)?;
+            self.addresses.init(variables,&self.code)?;
         }
 
         Ok(())

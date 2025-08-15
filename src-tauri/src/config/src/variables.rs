@@ -1,16 +1,18 @@
 use crate::errors::ConfigError;
 use crate::errors::Result;
-use std::result::Result as RResult;
+use crate::patches::Patches;
 use macros::ImpConfigVecIsEmptyTrait;
 use macros::ImpConfigVecWrapperTrait;
 use serde::Deserialize;
-use serde::Serialize;
 use serde::Deserializer;
+use serde::Serialize;
 use serde::Serializer;
 use serde::ser::SerializeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::result::Result as RResult;
+use utils::patch::jump_offset::calculate_jump_offset_bytes;
 
 pub const LOCATION_CODE: &str = "install_location";
 pub const VERSIUON_CODE: &str = "install_version";
@@ -27,35 +29,41 @@ pub struct Variables(pub Vec<Variable>);
 
 impl Variables {
     pub fn init(&mut self) -> Result<()> {
-        let values: Vec<VariableValue> = self
-            .0
-            .iter()
-            .map(|v| {
-                if let VariableValue::String(s) = v.get_value() {
-                    VariableValue::String(self.substitute(s.to_string()))
-                } else {
-                    v.get_value().clone()
-                }
-            })
-            .collect();
+        let mut values = Vec::new();
+        for variable in self.0.iter() {
+            let v = if let VariableValue::String(s) = variable.get_value() {
+                VariableValue::String(self.substitute(s.to_string()))
+            } else {
+                variable.get_value().clone()
+            };
+            values.push(v);
+        }
         for (variable, new_value) in self.0.iter_mut().zip(values) {
             variable.set_value(new_value);
         }
         Ok(())
     }
 
-    pub fn create_js_varibales<S: AsRef<str>>(text: S) -> Self {
-        let re = regex::Regex::new(r"\$\{([^}]+)\}").unwrap();
+    fn create_varibales_by_regex<S: AsRef<str>>(text: S, regex: &str, replace: &str) -> Self {
+        let re = regex::Regex::new(regex).unwrap();
         let js_variables = re
             .captures_iter(text.as_ref())
             .filter_map(|cap| cap.get(1))
             .map(|m| {
                 let code = m.as_str();
-                let value = format!("${{{}}}", &code);
+                let value = replace.replace("#", code);
                 Variable::new(code, value)
             })
             .collect::<Vec<Variable>>();
         Self(js_variables)
+    }
+
+    pub fn create_js_varibales<S: AsRef<str>>(text: S) -> Self {
+        Self::create_varibales_by_regex(text, r"\$\{([^}]+?)\}", r"${#}")
+    }
+
+    pub fn create_add_varibales<S: AsRef<str>>(text: S) -> Self {
+        Self::create_varibales_by_regex(text, r"\[([^}]+?)\]", r"$[#]")
     }
 
     pub fn get_install_loction(&self) -> Result<&str> {
@@ -157,6 +165,90 @@ impl Variables {
             }
         }
         result
+    }
+
+    pub fn substitute_add<S: Into<String>>(
+        &self,
+        text: S,
+        use_wildcards: bool,
+        pattern_code: &str,
+    ) -> Result<String> {
+        let mut result = text.into();
+        let js_variables = Variables::create_add_varibales(&result);
+        for js_variable in js_variables.0 {
+            let v_code = js_variable.code.to_string();
+            let value = js_variable.value.to_string();
+            let code_split = v_code.as_str().split('|').collect::<Vec<&str>>();
+
+            if code_split.len() != 3 {
+                return Err(ConfigError::InvalidVariable(v_code.to_string()));
+            }
+
+            let code = code_split[0];
+
+            let len = code_split[2]
+                    .parse::<usize>()
+                    .map_err(|_| ConfigError::InvalidVariable(code.to_string()))?;
+
+            if use_wildcards {
+                result = result.replace(value.as_str(), "??".repeat(len).as_str());
+                continue;
+            }
+
+            if let Some(v1) = self.find_variable(code)
+                && let Some(v2) = self.find_variable(pattern_code)
+            {
+                let target_addr = v1
+                    .as_usize()
+                    .ok_or(ConfigError::GetVariabledValueError(code.to_string()))?
+                    as u64;
+                let current_addr = v2
+                    .as_usize()
+                    .ok_or(ConfigError::GetVariabledValueError(pattern_code.to_string()))?
+                    as u64;
+                let offset_adjust = code_split[1]
+                    .parse::<i64>()
+                    .map_err(|_| ConfigError::InvalidVariable(code.to_string()))?;
+                let mut patch_code =
+                    calculate_jump_offset_bytes(current_addr, target_addr, offset_adjust)?.to_hex();
+                let parch_code_len = patch_code.len() / 2;
+                if parch_code_len > len {
+                    return Err(ConfigError::CalcAddressError(pattern_code.to_string()));
+                }
+                if parch_code_len < len {
+                    let diff_len = len - parch_code_len;
+                    patch_code = format!("{}{}", patch_code, "90".repeat(diff_len));
+                }
+                result = result.replace(value.as_str(), patch_code.as_str());
+            } else {
+                return Err(ConfigError::GetVariabledValueError(code.to_string()).into());
+            }
+        }
+        Ok(result)
+    }
+}
+
+impl TryFrom<&Patches> for Variables {
+    type Error = ConfigError;
+    fn try_from(patches: &Patches) -> RResult<Self, Self::Error> {
+        let mut variables = Variables::default();
+        for patch in &patches.0 {
+            for pattern in &patch.patterns.0 {
+                for address in &pattern.addresses.0 {
+                    let add = address.start_rva;
+                    if add <= 0 {
+                        return Err(ConfigError::InvalidAddress);
+                    }
+                    let v = VariableValue::Usize(add);
+                    let variable = Variable::new(pattern.code.clone(), v);
+                    variables.push(variable)
+                }
+            }
+        }
+        if variables.is_empty() {
+            return Err(ConfigError::AddressesEmptyError);
+        }
+        Ok(variables)
     }
 }
 
@@ -321,7 +413,7 @@ impl Serialize for Variable {
 }
 
 impl<'de> Deserialize<'de> for Variable {
-    fn deserialize<D>(deserializer: D) ->RResult<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> RResult<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -360,8 +452,7 @@ impl<'de> Deserialize<'de> for Variables {
     where
         D: serde::Deserializer<'de>,
     {
-        let map:HashMap<String, VariableValue> =
-            Deserialize::deserialize(deserializer)?;
+        let map: HashMap<String, VariableValue> = Deserialize::deserialize(deserializer)?;
         let variables = map
             .into_iter()
             .map(|(code, value)| Variable { code, value })

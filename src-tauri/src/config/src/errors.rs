@@ -4,7 +4,7 @@ use tokio::task::JoinError;
 use utils::errors::UtilsError;
 use winsys::errors::WinsysError;
 
-pub type Result<T> = core::result::Result<T,  ConfigError>;
+pub type Result<T> = core::result::Result<T, ConfigError>;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -62,6 +62,9 @@ pub enum ConfigError {
     #[error("获取变量值 {0} 失败")]
     GetVariabledValueError(String),
 
+    #[error("变量 {0} 无效，请检查配置文件")]
+    InvalidVariable(String),
+
     #[error("前置功能 {0} 未启用")]
     DependFeatureStatusError(String),
 
@@ -97,6 +100,15 @@ pub enum ConfigError {
 
     #[error("基址为空")]
     AddressesEmptyError,
+
+    #[error("计算 {0} 地址失败")]
+    CalcAddressError(String),
+
+    #[error("找到的 {0} 基址 {1} 个，超过限制，可能不支持当前版本")]
+    AddressesTooMuchError(String, usize),
+
+    #[error("基址无效")]
+    InvalidAddress,
 
     #[error("CacheLockError")]
     CacheLockError,

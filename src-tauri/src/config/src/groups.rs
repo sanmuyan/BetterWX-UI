@@ -1,4 +1,5 @@
 use crate::addresses::Addresses;
+use crate::errors::ConfigError;
 use crate::errors::Result;
 use crate::serders::skippers::skip_if_empty;
 use crate::variables::Variables;
@@ -49,8 +50,9 @@ impl Group {
         let _ = variables.get_num()?;
         let _ = variables.get_num_hex()?;
 
-        // 构造 replace2 数据
+        // 判断是否是包含 地址计算
         let mut replace = self.replace.clone();
+        replace = variables.substitute_add(replace,true,"")?;
         replace = variables.substitute(replace);
         replace = replace_ellipsis(&replace, &self.pattern)?;
         self.replace2 = replace;
@@ -65,7 +67,11 @@ impl Group {
             "特征码".to_string()
         };
         let p = if usereplace {
-            self.replace2.as_str()
+            let replace2 = self.replace2.as_str();
+            if replace2 == "" {
+                return Ok(Addresses::default());
+            }
+            replace2
         } else {
             pattern.as_str()
         };
@@ -73,6 +79,10 @@ impl Group {
         debug!("使用 {} 搜索 {} 地址, 特征码:{}", text, name, p);
         match upatch.search_all(p) {
             Ok(poses) => {
+                let len = poses.len();
+                if len>5 {
+                    return Err(ConfigError::AddressesTooMuchError(name.to_owned(),len).into());
+                }
                 info!("搜索 {} {}。成功！地址:{:?}", name, text, poses);
                 let addresses = Addresses::create(
                     &upatch,

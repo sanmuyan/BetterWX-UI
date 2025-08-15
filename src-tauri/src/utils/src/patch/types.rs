@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use crate::errors::Result;
 use crate::patch::errors::UPatchError;
 use memmap2::Mmap;
@@ -97,6 +98,12 @@ impl Hex {
 impl From<Bytes> for Hex {
     fn from(value: Bytes) -> Self {
         Self(value.to_hex())
+    }
+}
+
+impl Display for Bytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_hex())
     }
 }
 

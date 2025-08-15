@@ -1,4 +1,3 @@
-pub type Result<T> = core::result::Result<T, UtilsError>;
 use crate::base64::Base64Error;
 use crate::cmd::CmdError;
 use crate::file::FileError;
@@ -10,6 +9,8 @@ use crate::store::StoreError;
 use crate::tools::ToolsError;
 use thiserror::Error;
 use winsys::errors::WinsysError;
+
+pub type Result<T> = core::result::Result<T, UtilsError>;
 
 #[derive(Debug, Error)]
 pub enum UtilsError {

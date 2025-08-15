@@ -9,6 +9,7 @@ use log::info;
 use log::warn;
 use memmap2::Mmap;
 use memmap2::MmapMut;
+use pelite::PeFile;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -18,6 +19,7 @@ pub struct UPatch {
     file: String,
     save: String,
     with_write: bool,
+    sections: Vec<(u64, u64, u64)>,
 }
 
 impl UPatch {
@@ -40,16 +42,18 @@ impl UPatch {
                 Self::open_with_fs(input)?
             }
         };
-        return Ok(Self::new(data, input, save, with_write));
+        return Self::new(data, input, save, with_write);
     }
 
-    pub fn new(data: PatchDataType, file: &str, save: &str, with_write: bool) -> Self {
-        Self {
+    pub fn new(data: PatchDataType, file: &str, save: &str, with_write: bool) -> Result<Self> {
+        let sections = Self::init_sections(&data)?;
+        Ok(Self {
             data,
             file: file.to_string(),
             save: save.to_string(),
             with_write,
-        }
+            sections: sections,
+        })
     }
 
     fn open_with_map(input: &str) -> Result<PatchDataType> {
@@ -72,7 +76,11 @@ impl UPatch {
     }
 
     pub fn get_data(&self) -> &[u8] {
-        match &self.data {
+        Self::get_data_by_datetype(&self.data)
+    }
+
+    pub fn get_data_by_datetype(data: &PatchDataType) -> &[u8] {
+        match &data {
             PatchDataType::Mmap(data) => data,
             PatchDataType::MmapMut(data) => data,
             PatchDataType::Data(data) => data,
@@ -144,6 +152,45 @@ impl UPatch {
             return Err(UPatchError::PatternNotFindError.into());
         }
         Ok(results)
+    }
+
+    pub fn init_sections(data: &PatchDataType) -> Result<Vec<(u64, u64, u64)>> {
+
+        let pe_data = Self::get_data_by_datetype(data);
+        let pe_file = PeFile::from_bytes(pe_data).map_err(|_| UPatchError::FOAToRVAError)?;
+        let sections_headers = pe_file.section_headers();
+        let mut sections = Vec::new();
+        for section in sections_headers {
+            let range = section.file_range();
+            sections.push((
+                range.start as u64,
+                range.end as u64,
+                section.VirtualAddress as u64,
+            ));
+        }
+        Ok(sections)
+    }
+
+    pub fn foa_to_rva(&self, foa: u64) -> Result<u64> {
+        let sections = &self.sections;
+        for section in sections {
+            let section_start = section.0;
+            let section_end = section.1;
+            let v_address = section.2;
+            // 处理未映射到节的数据（如PE头）
+            if foa < section_start {
+                return Ok(foa);
+            }
+            // 检查 FOA 是否在当前节内
+            if foa >= section_start && foa < section_end {
+                // 计算节内偏移
+                let offset_in_section = foa - section_start;
+                // 转换为 RVA: 节起始RVA + 节内偏移
+                return Ok(v_address + offset_in_section);
+            }
+        }
+
+        Err(UPatchError::FOAToRVAError.into())
     }
 
     pub fn write(&mut self, pos: usize, data: PatchType) -> Result<&Self> {
