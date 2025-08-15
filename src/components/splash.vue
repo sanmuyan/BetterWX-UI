@@ -49,7 +49,7 @@ async function check_update() {
         const appName = await getName()
         let info = update.value
         setTitle(info.name || appName, appVersion)
-        if (info.nversion !== appVersion) {
+        if (info.nversion && info.nversion !== appVersion) {
             await addMsg(`发现新版本 v${info.nversion}，请更新`)
             await addMsg(`${info.description}`)
             if (info.force) {
