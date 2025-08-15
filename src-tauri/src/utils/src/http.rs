@@ -12,10 +12,10 @@ const ERROR_PREFIX: &str = "网络请求错误";
 
 #[derive(Debug, Error)]
 pub enum HttpError {
-    #[error("{ERROR_PREFIX}， {0}")]
-    RequestError(#[from] reqwest::Error),
+    #[error("{ERROR_PREFIX}")]
+    RequestError,
 
-    #[error("{ERROR_PREFIX}， {0}")]
+    #[error("{ERROR_PREFIX}：{0}")]
     RequestStatusError(String),
 
     #[error("{ERROR_PREFIX}，请求超时")]
@@ -53,7 +53,10 @@ impl Http {
                 .timeout(Duration::from_secs(30))
                 .user_agent(USER_AGENT)
                 .build()
-                .map_err(|e| HttpError::RequestError(e))?,
+                .map_err(|e|{
+                    error!("创建http客户端失败:{}", e);
+                    HttpError::RequestError
+                })?,
         };
         Ok(http)
     }
@@ -71,9 +74,11 @@ impl Http {
         let url = self.fix_url(url);
         let response = self.client.get(&url).send().await.map_err(|e| {
             if e.is_timeout() {
+                error!("请求超时:{}", e);
                 HttpError::TimeoutError
             } else {
-                HttpError::RequestError(e)
+                error!("请求失败:{}", e);
+                HttpError::RequestError
             }
         })?;
 
@@ -85,7 +90,10 @@ impl Http {
         let r = response
             .text()
             .await
-            .map_err(|e| HttpError::RequestError(e))?;
+            .map_err(|e| {
+                error!("请求失败:{}", e);
+                HttpError::RequestError
+            })?;
         if let Some(passwrd) = self.passwrd.as_ref() {
             let base64 = Base64::new(passwrd.as_str());
             if let Ok(base64) = base64 {

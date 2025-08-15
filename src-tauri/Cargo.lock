@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "BetterWX-UI"
-version = "3.0.8"
+version = "3.0.9"
 dependencies = [
  "config",
  "ctor 0.4.2",
@@ -551,7 +551,7 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "3.0.8"
+version = "3.0.9"
 dependencies = [
  "log",
  "macros",
@@ -2149,7 +2149,7 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "logger"
-version = "3.0.8"
+version = "3.0.9"
 dependencies = [
  "ctor 0.4.2",
  "fern",
@@ -3710,7 +3710,7 @@ dependencies = [
 
 [[package]]
 name = "services"
-version = "3.0.8"
+version = "3.0.9"
 dependencies = [
  "config",
  "log",
@@ -3736,7 +3736,7 @@ dependencies = [
 
 [[package]]
 name = "setting"
-version = "3.0.8"
+version = "3.0.9"
 
 [[package]]
 name = "sha2"
@@ -4815,7 +4815,7 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "utils"
-version = "3.0.8"
+version = "3.0.9"
 dependencies = [
  "aobscan",
  "base64 0.22.1",
@@ -5525,7 +5525,7 @@ dependencies = [
 
 [[package]]
 name = "winsys"
-version = "3.0.8"
+version = "3.0.9"
 dependencies = [
  "known-folders",
  "log",
