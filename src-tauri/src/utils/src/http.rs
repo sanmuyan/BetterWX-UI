@@ -12,7 +12,7 @@ const ERROR_PREFIX: &str = "网络请求错误";
 
 #[derive(Debug, Error)]
 pub enum HttpError {
-    #[error("{ERROR_PREFIX}")]
+    #[error("{ERROR_PREFIX}，请检查网络")]
     RequestError,
 
     #[error("{ERROR_PREFIX}：{0}")]
