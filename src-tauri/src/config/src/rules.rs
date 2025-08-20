@@ -261,35 +261,6 @@ impl Rule {
         })
     }
 
-    // pub fn walk_files(&self) -> Result<FileRules> {
-    //     info!("正在检测 {} 共存文件...", self.get_name());
-    //     self.check_is_search_type()?;
-    //     let mut rules = Rules::default();
-    //     for num in 0..10 {
-    //         let (_, name) = convert_num(num);
-    //         let mut new_rule = self.build_by_num(num)?;
-    //         match new_rule.check_files_and_del(true,false) {
-    //             Ok(_) => {
-    //                 new_rule.features.retain_features(num==0);
-    //                 new_rule.set_patched(None)?;
-    //                 debug!("检测到 {} {} 文件", self.get_name(), name);
-    //                 rules.push(new_rule);
-    //             }
-    //             Err(e) => {
-    //                 debug!("检测 {} {} 文件失败，{}", self.get_name(), name, e);
-    //             }
-    //         }
-    //     }
-    //     rules.0.sort_by(|a, b| a.index.cmp(&b.index));
-    //     info!("共检测到 {} 个共存程序", rules.len());
-
-    //     let files = FileRules {
-    //         code: self.code.clone(),
-    //         rules,
-    //     };
-    //     Ok(files)
-    // }
-
     pub fn build_by_num(&self, num: usize) -> Result<Self> {
         if num > 10 {
             return Err(ConfigError::InvalidCoexistNum(num.to_string()).into());
@@ -309,8 +280,7 @@ impl Rule {
         let mut rule = self.clone();
         rule.variables.set_value(ISMAIN_CODE, ismain);
         rule.variables.set_value(NUM_CODE, num);
-        rule.variables.set_value(NUM_HEX_CODE, num_hex);
-        println!("rule.variables {:?}", rule.variables);
+        rule.variables.set_value(NUM_HEX_CODE, num_hex); 
         rule.init_variables()?.init_patches()?;
         if num == 10 {
             return Ok(rule);

@@ -2,7 +2,7 @@
     <div v-if="!update.version">
         <splash @loaded="loaded" />
     </div>
-    <div v-else>
+    <div v-else class="overflow-y-hidden">
         <Tabs v-model:value="tabIndex" class="h-screen flex flex-col">
             <TabList class="!text-center">
                 <Tab value="readme" class="!pt-0 !pb-0">说明</Tab>

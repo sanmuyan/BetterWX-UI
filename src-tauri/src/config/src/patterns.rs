@@ -7,6 +7,7 @@ use crate::serders::skippers::skip_if_empty;
 use crate::variables::Variables;
 use crate::views::orignal_view::OrignalView;
 use log::debug;
+use log::error;
 use macros::FieldDescGetters;
 use macros::FieldNameGetters;
 use macros::ImpConfigVecIsEmptyTrait;
@@ -51,13 +52,13 @@ impl Patterns {
 }
 impl Patterns {
     pub fn is_supported(&self) -> bool {
-        self.0.iter().all(|pattern| pattern.disabled || pattern.supported)
+        self.0
+            .iter()
+            .all(|pattern| pattern.disabled || pattern.supported)
     }
 
     pub fn is_searched(&self) -> bool {
-        self.0
-            .iter()
-            .any(|pattern| pattern.searched)
+        self.0.iter().any(|pattern| pattern.searched)
     }
 
     pub fn is_patched(&self) -> bool {
@@ -93,7 +94,7 @@ pub struct Pattern {
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub patched: bool,
-        #[serde(default)]
+    #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub searched: bool,
 }
@@ -143,7 +144,7 @@ impl Pattern {
         if !self.addresses.is_empty() {
             //初始化 patched
             self.patched = false;
-            self.addresses.init(variables,&self.code)?;
+            self.addresses.init(variables, &self.code)?;
         }
 
         Ok(())
@@ -151,12 +152,11 @@ impl Pattern {
 
     pub fn search(&mut self, upatch: &UPatch) -> Result<()> {
         // 禁用不处理
+        self.searched = true;
         if self.disabled {
             self.supported = true;
-            self.searched = true;
             return Ok(());
         }
-
         if !self.supported
             && let Some(group) = &self.group
         {
@@ -168,6 +168,33 @@ impl Pattern {
                 self.group = None;
                 return Ok(());
             }
+
+            match group.search(upatch, false, name) {
+                Ok(addresses) => {
+                    self.addresses = addresses;
+                    self.supported = true;
+                    self.group = None;
+                    return Ok(());
+                }
+                Err(e) => {
+                    error!("搜索 {} 失败！{}", name, e);
+                    match e {
+                        ConfigError::AddressesTooMuchError(_, _, _) => {
+                            self.supported = false;
+                            self.group = None;
+                            return Ok(());
+                        }
+                        _ => {}
+                    }
+                },
+            }
+
+            if group.replace2.is_empty() || group.replace2.as_str() == "..." {
+                self.supported = false;
+                self.group = None;
+                return Ok(());
+            }
+
             match group.search(upatch, true, name) {
                 Ok(addresses) => {
                     self.addresses = addresses;
@@ -203,7 +230,7 @@ impl Pattern {
         Ok(())
     }
 
-     pub fn patch_by_replace(&mut self, upatch: &mut UPatch, replace: &str) -> Result<()> {
+    pub fn patch_by_replace(&mut self, upatch: &mut UPatch, replace: &str) -> Result<()> {
         // 禁用不处理
         if self.disabled {
             return Ok(());
@@ -215,9 +242,9 @@ impl Pattern {
         debug!("开始执行 {} 补丁", self.get_name());
         self.addresses.patch_by_replace(upatch, replace)?;
         Ok(())
-    } 
+    }
 
-    pub fn read_orignal(&self, upatch: &mut UPatch) ->Result<OrignalView> {
+    pub fn read_orignal(&self, upatch: &mut UPatch) -> Result<OrignalView> {
         // 禁用不处理
         if self.disabled {
             return Ok(OrignalView::default());
@@ -228,5 +255,4 @@ impl Pattern {
         }
         self.addresses.read_orignal(upatch)
     }
-    
 }

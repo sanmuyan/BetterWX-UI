@@ -12,14 +12,12 @@
     </ScrollPanel>
     <Divider class="!m-0" />
     <div class="flex flex-row items-center justify-between h-16 border-t-1 my-border-color">
-        <div>
+        <div class="flex-1">
             <Tag :value="installTag.name" :severity="rule.installed ? 'success' : 'danger'" class="mr-1"></Tag>
             <Tag :value="patternTag.name" :severity="rule.supported ? 'success' : 'danger'"></Tag>
         </div>
-        <div>
-            <div v-if="rule.news">
-                <span>{{ rule.news }}</span>
-            </div>
+        <div class="flex-1 h-16 flex flex-row justify-end items-center">
+            <span v-if="rule.news" class="!whitespace-pre-line text-sm">{{ rule.news }}</span>
         </div>
     </div>
     <Dialog v-model:visible="inputDialog.show" modal :header="inputDialog.title" class="w-120" :closable="false">

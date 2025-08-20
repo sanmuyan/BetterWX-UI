@@ -38,7 +38,7 @@ mod tests {
     #[test]
     fn test_address_jump() {
         let result =
-            calculate_jump_offset_bytes(0x00007FFFBB4423C0, 0x7FFFC1CC4B87, 7).unwrap();
+            calculate_jump_offset_bytes(0x00007FF9B148C3B0, 0x7FF9B23F8935, 12).unwrap();
         println!("{:?}", result);
         println!("{}", result); 
     }

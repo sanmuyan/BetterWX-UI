@@ -59,7 +59,7 @@ impl Addresses {
         for address in &mut self.0 {
             address.get_patched(upatch)?;
         }
-        let patched = self.0.iter().all(|address| address.patched);
+        let patched = self.0.iter().filter(|address| !(address.replace.is_empty() && address.replace != "...")).all(|address| address.patched);
         Ok(patched)
     }
 
@@ -142,6 +142,10 @@ impl Address {
 
     pub fn init(&mut self, variables: &Variables,pattern_code:&str) -> Result<()> {
         let _ = variables.get_num_hex()?;
+        if self.replace.is_empty() || self.replace.as_str() == "..." {
+            self.replace = "".to_string();
+            return Ok(())
+        }
         let mut replace = self.replace.to_string();
         replace = variables.substitute_add(replace,false,pattern_code)?;
         replace = variables.substitute(replace);
@@ -167,9 +171,14 @@ impl Address {
         } else {
             self.orignal.as_str()
         };
+
+        if new_data.is_empty() {
+            return Ok(())
+        }
+
         debug!(
-            "基址：{}\n原始数据：{:?}\n替换数据：{:?}",
-            self.start, base_data, new_data
+            "基址：{}\n原始数据：{:?}\n当前数据：{:?}\n替换数据：{:?}",
+            self.start, self.orignal.as_str(), base_data, new_data
         );
         upatch.write(self.start, new_data.into())?;
         Ok(())

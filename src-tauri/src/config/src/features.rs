@@ -7,6 +7,7 @@ use crate::serders::default::default_true;
 use crate::serders::skippers::skip_if_empty;
 use crate::serders::skippers::skip_if_tdelay;
 use crate::variables::Variables;
+use log::info;
 use log::trace;
 use macros::FieldDescGetters;
 use macros::FieldNameGetters;
@@ -237,7 +238,7 @@ impl Feature {
             }
             self.disabled = all_disabled;
             self.supported = all_supported;
-            log::error!(
+            info!(
                 "功能：{}，修正 supported：{} ,disabled：{}",
                 self.get_name(),
                 self.supported,

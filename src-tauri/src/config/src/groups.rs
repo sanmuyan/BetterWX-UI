@@ -1,6 +1,8 @@
 use crate::addresses::Addresses;
 use crate::errors::ConfigError;
 use crate::errors::Result;
+use crate::serders::default::default_1;
+use crate::serders::skippers::skip_if_1;
 use crate::serders::skippers::skip_if_empty;
 use crate::variables::Variables;
 use log::debug;
@@ -41,6 +43,9 @@ pub struct Group {
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub disabled: bool,
+    #[serde(default = "default_1")]
+    #[serde(skip_serializing_if = "skip_if_1")]
+    pub count: usize,
 }
 
 impl Group {
@@ -49,11 +54,14 @@ impl Group {
         // 核对 num 和 num_hex 存在
         let _ = variables.get_num()?;
         let _ = variables.get_num_hex()?;
-
+        if self.replace.is_empty() || self.replace.as_str() == "..." {
+            self.replace2 = "".to_string();
+            return Ok(());
+        }
         // 判断是否是包含 地址计算
         let mut replace = self.replace.clone();
-        replace = variables.substitute_add(replace,true,"")?;
         replace = variables.substitute(replace);
+        replace = variables.substitute_add(replace, true, "")?;
         replace = replace_ellipsis(&replace, &self.pattern)?;
         self.replace2 = replace;
         Ok(())
@@ -80,10 +88,22 @@ impl Group {
         match upatch.search_all(p) {
             Ok(poses) => {
                 let len = poses.len();
-                if len>5 {
-                    return Err(ConfigError::AddressesTooMuchError(name.to_owned(),len).into());
+
+                // 基址数量限制
+                if len > 5 || (self.count > 0 && self.count != len) {
+                    return Err(ConfigError::AddressesTooMuchError(
+                        name.to_owned(),
+                        len,
+                        self.count,
+                    )
+                    .into());
                 }
-                info!("搜索 {} {}。成功！地址:{:?}", name, text, poses);
+
+                info!(
+                    "搜索 {} {}。成功！地址:{:?} ,len {} ,count {}",
+                    name, text, poses, len, self.count
+                );
+
                 let addresses = Addresses::create(
                     &upatch,
                     poses,

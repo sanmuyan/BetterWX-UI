@@ -104,8 +104,8 @@ pub enum ConfigError {
     #[error("计算 {0} 地址失败")]
     CalcAddressError(String),
 
-    #[error("找到的 {0} 基址 {1} 个，超过限制，可能不支持当前版本")]
-    AddressesTooMuchError(String, usize),
+    #[error("找到的 {0} 基址 {1} 个，期待 {2} 个，可能不支持当前版本")]
+    AddressesTooMuchError(String, usize, usize),
 
     #[error("基址无效")]
     InvalidAddress,

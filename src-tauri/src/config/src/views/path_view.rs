@@ -19,6 +19,9 @@ pub struct PathView {
     pub install_version: String,
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
+    pub news: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
     pub rtype: usize,
 }
 
@@ -38,6 +41,7 @@ impl From<&Rule> for PathView {
             rtype: rule.rtype.clone() as usize,
             hfeatures: rule.hfeatures.clone(),
             installed: rule.installed,
+            news: rule.news.clone(),
             install_location,
             install_version,
         }

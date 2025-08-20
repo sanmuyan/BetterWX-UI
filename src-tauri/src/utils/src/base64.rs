@@ -87,17 +87,31 @@ mod tests {
             .as_str()
             .unwrap();
 
-        read_and_save(DEBUG_UPDATE_NAME, MAIN_PKG_NAME, true);
-        read_and_save(DEBUG_README_NAME, readme_version, false);
-        read_and_save(DEBUG_CONFIG_NAME, config_version, true);
+        read_and_save(DEBUG_UPDATE_NAME, MAIN_PKG_NAME,config_version, true);
+        read_and_save(DEBUG_README_NAME, readme_version,config_version, false);
+        read_and_save(DEBUG_CONFIG_NAME, config_version,config_version, true);
     }
 
-    fn read_and_save(name: &str, version: &str, is_json: bool) {
+    fn read_and_save(name: &str, version: &str, version2: &str, is_json: bool) {
+
         let path = Path::new(DEBUG_BASE_PATH).join(name.to_lowercase());
         let base_name = name.split(".").collect::<Vec<&str>>()[0];
-        let new_name = format!("{}.zip", base_name);
-        let new_path = Path::new(DEBUG_BASE_PATH).join(".cargo").join(new_name.to_lowercase());
-        println!("{:?}", path);
+        let new_name = format!("{}.zip", &base_name);
+        let new_path = Path::new(DEBUG_BASE_PATH)
+            .join(".cargo")
+            .join(&new_name.to_lowercase());
+        let bak_version = if  MAIN_PKG_NAME == version {
+            version2
+        }else{
+            version
+        };
+
+        let bak_path = Path::new(DEBUG_BASE_PATH)
+            .join("bak")
+            .join(format!("{}-{}.bak", base_name, bak_version).to_lowercase());
+        let decode_path = Path::new(DEBUG_BASE_PATH)
+            .join(".cargo")
+            .join(&base_name.to_lowercase()); 
         let data = fs::read_to_string(&path).unwrap();
         let json = if is_json {
             let j: Value = serde_json::from_str(&data).unwrap();
@@ -105,8 +119,13 @@ mod tests {
         } else {
             data
         };
+        let base64 =  Base64::new(version).unwrap();
         let json_str = json.to_string();
-        let edata: String = Base64::new(version).unwrap().encode(&json_str);
+        let edata: String =base64.encode(&json_str);
+        fs::write(&bak_path, json_str).unwrap();
         fs::write(&new_path, edata).unwrap();
+        let edata = fs::read_to_string(&new_path).unwrap();
+        let ddata = base64.decode(&edata).unwrap();
+        fs::write(&decode_path, ddata).unwrap();
     }
 }

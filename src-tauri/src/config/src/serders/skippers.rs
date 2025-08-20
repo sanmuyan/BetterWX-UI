@@ -9,3 +9,8 @@ pub fn skip_if_empty<T: Serialize + Empty>(value: &T) -> bool {
     value.is_empty()
 }
 
+pub fn skip_if_1(value: &usize) -> bool {
+    *value == 1
+}
+
+
