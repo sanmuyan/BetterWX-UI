@@ -123,7 +123,10 @@ impl Pattern {
             let group = self
                 .groups
                 .take_first_less_by_version(version.as_str())
-                .map_err(|_| ConfigError::PatternNotSupported(version))?;
+                .map_err(|_| {
+                    error!("{} 未找到对应版本的特征码数据", self.get_name());
+                    ConfigError::PatternNotSupported(version)
+                })?;
             self.disabled = group.disabled;
 
             // 未禁用，添加到 group 用于后续搜索

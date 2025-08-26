@@ -18,10 +18,6 @@
 - ✅ 消息防撤回
 - ✅ 多账号共存免扫码登录
 
-## 📞 反馈交流
-
-<p align="center"><img src="https://raw.githubusercontent.com/afaa1991/BetterWX-UI/3.0.0/assests/qq.png" width="480px"></p>
-
 ## 📌 最低支持版本
 
 - Windows版 微信 3.9.12.51（64位） 和 4.0.3.11 
