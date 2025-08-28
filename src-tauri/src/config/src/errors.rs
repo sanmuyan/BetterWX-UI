@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use crate::update::UpdatesError;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -65,6 +67,9 @@ pub enum ConfigError {
     #[error("变量 {0} 无效，请检查配置文件")]
     InvalidVariable(String),
 
+    #[error("变量 {0} 类型无效，请检查配置文件")]
+    InvalidVariableType(String),
+
     #[error("前置功能 {0} 未启用")]
     DependFeatureStatusError(String),
 
@@ -127,4 +132,7 @@ pub enum ConfigError {
 
     #[error(transparent)]
     JsonError(#[from] JoinError),
+
+    #[error(transparent)]
+    ParseIntError(#[from] ParseIntError),
 }

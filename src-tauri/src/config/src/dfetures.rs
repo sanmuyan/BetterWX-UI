@@ -38,7 +38,7 @@ const DEFAULT_FEATURE_STR: &str = r#"[
     {
         "code": "close_all",
         "name": "一键关闭",
-        "description": "退出所有选中的软件",
+        "description": "关闭所有选中的软件",
         "severity": "danger",
         "inhead": true,
         "index": 33

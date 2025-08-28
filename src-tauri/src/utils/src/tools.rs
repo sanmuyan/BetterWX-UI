@@ -65,7 +65,7 @@ pub fn replace_wildcards<S: AsRef<str>>(wildcard_str: S, orignal: S) -> Result<S
     }
     // 将字符向量转换回字符串
     Ok(wildcard_chars.into_iter().collect::<String>())
-}
+} 
 
 #[macro_export]
 macro_rules! destructure_assign {

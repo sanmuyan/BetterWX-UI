@@ -10,28 +10,24 @@
                     </div>
                     <div v-if="isShow(feature, 'switch')"
                         class="mr-2 flex flex-col items-center justify-center no-focus"
-                        v-tooltip.top="toolTips(feature)" @click="switch_change(feature)">
-                        <Button :label="feature.name" :variant="!feature.status ? 'outlined' : ''" size="small"
-                            :severity="feature.status ? 'success' : feature.severity"
-                            :disabled="is_disabled(feature)" />
+                        v-tooltip.top="toolTips(feature)">
+                        <Button :label="feature.name" :icon="feature.icon" :variant="!feature.status ? 'outlined' : ''"
+                            size="small" :severity="feature.status ? 'success' : feature.severity"
+                            :disabled="is_disabled(feature)" @click="switch_change(feature)" />
                     </div>
                     <div v-if="isShow(feature, 'button')" class="mr-2 flex flex-col items-center justify-center "
-                        v-tooltip.top="toolTips(feature)" @click="handleEvent(true, feature)">
-                        <Button v-if="feature.icon" :icon="`${feature.icon}`" size="small" :severity="feature.severity"
-                            :disabled="is_disabled(feature)" />
-                        <Button v-else :label="feature.name" size="small" :severity="feature.severity"
-                            :disabled="is_disabled(feature)" />
+                        v-tooltip.top="toolTips(feature)">
+                        <Button :icon="feature.icon" :label="feature.name" size="small" :severity="feature.severity"
+                            :disabled="is_disabled(feature)" @click="handleEvent(true, feature)" />
                     </div>
                 </template>
             </div>
             <div class="flex flex-row items-center mr-1">
                 <template v-for="(feature, index) in features" :key="index">
                     <div v-if="isShow(feature, 'button', true)" class="mr-2 flex flex-col items-center justify-center "
-                        v-tooltip.top="toolTips(feature)" @click="handleEvent(true, feature)">
-                        <Button v-if="feature.icon" :icon="`${feature.icon}`" size="small" :severity="feature.severity"
-                            :disabled="is_disabled(feature)" />
-                        <Button v-else :label="feature.name" size="small" :severity="feature.severity"
-                            :disabled="is_disabled(feature)" />
+                        v-tooltip.top="toolTips(feature)">
+                        <Button :icon="feature.icon" :label="feature.name" size="small" :severity="feature.severity"
+                            :disabled="is_disabled(feature)" @click="handleEvent(true, feature)" />
                     </div>
                 </template>
             </div>

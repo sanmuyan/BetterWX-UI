@@ -187,8 +187,8 @@ impl Variables {
             let code = code_split[0];
 
             let len = code_split[2]
-                    .parse::<usize>()
-                    .map_err(|_| ConfigError::InvalidVariable(code.to_string()))?;
+                .parse::<usize>()
+                .map_err(|_| ConfigError::InvalidVariable(code.to_string()))?;
 
             if use_wildcards {
                 result = result.replace(value.as_str(), "??".repeat(len).as_str());
@@ -198,19 +198,38 @@ impl Variables {
             if let Some(v1) = self.find_variable(code)
                 && let Some(v2) = self.find_variable(pattern_code)
             {
-                let target_addr = v1
-                    .as_usize()
-                    .ok_or(ConfigError::GetVariabledValueError(code.to_string()))?
-                    as u64;
-                let current_addr = v2
-                    .as_usize()
-                    .ok_or(ConfigError::GetVariabledValueError(pattern_code.to_string()))?
-                    as u64;
-                let offset_adjust = code_split[1]
-                    .parse::<i64>()
-                    .map_err(|_| ConfigError::InvalidVariable(code.to_string()))?;
-                let mut patch_code =
-                    calculate_jump_offset_bytes(current_addr, target_addr, offset_adjust)?.to_hex();
+                let target_addr = v1.to_usize()? as u64;
+                let current_addr = v2.to_usize()? as u64;
+
+                let temp_arg1 = code_split[1].to_string();
+                let (current_adjust, target_adjust) = if temp_arg1 == "?" {
+                    // $[address|?|4] 自动计算 目标地址无偏移
+                    let index = Self::get_hex_index_by_str(result.as_str(), js_variable.to_str()?)?;
+                    (index + len as i64, 0)
+                } else if temp_arg1.contains(",") {
+                    // $[address|?,4|4]
+                    let offsets = temp_arg1.split(",").collect::<Vec<&str>>();
+                    if offsets[0] == "?" {
+                        // $[address|?,4|4] 自动计算 + 目标地址偏移
+                        let index: i64 =
+                            Self::get_hex_index_by_str(result.as_str(), js_variable.to_str()?)?;
+                        (index + len as i64, offsets[1].parse::<i64>()?)
+                    } else {
+                        // $[address|12,4|4] 当地地址偏移 + 目标地址偏移
+                        (offsets[0].parse::<i64>()?, offsets[1].parse::<i64>()?)
+                    }
+                } else {
+                    // $[address|4|4] 当地地址偏移
+                    (code_split[1].parse::<i64>()?, 0)
+                };
+
+                let mut patch_code = calculate_jump_offset_bytes(
+                    (current_addr as i64 + current_adjust) as u64,
+                    (target_addr as i64 + target_adjust) as u64,
+                    0,
+                )?
+                .to_hex();
+            
                 let parch_code_len = patch_code.len() / 2;
                 if parch_code_len > len {
                     return Err(ConfigError::CalcAddressError(pattern_code.to_string()));
@@ -225,6 +244,14 @@ impl Variables {
             }
         }
         Ok(result)
+    }
+
+    fn get_hex_index_by_str(str1: &str, str2: &str) -> Result<i64> {
+        let index = str1
+            .find(str2)
+            .map(|index| index as i64 / 2)
+            .ok_or(ConfigError::InvalidVariableType(str2.to_string()))? as i64;
+        Ok(index)
     }
 }
 
@@ -322,6 +349,14 @@ impl Variable {
         }
     }
 
+    pub fn to_str(&self) -> Result<&str> {
+        if let VariableValue::String(s) = &self.value {
+            Ok(s)
+        } else {
+            Err(ConfigError::InvalidVariableType(self.code.to_string()))
+        }
+    }
+
     pub fn as_i64(&self) -> Option<i64> {
         if let VariableValue::Number(n) = &self.value {
             Some(*n)
@@ -330,11 +365,27 @@ impl Variable {
         }
     }
 
+    pub fn to_i64(&self) -> Result<i64> {
+        if let VariableValue::Number(n) = &self.value {
+            Ok(*n)
+        } else {
+            Err(ConfigError::InvalidVariableType(self.code.to_string()))
+        }
+    }
+
     pub fn as_usize(&self) -> Option<usize> {
         if let VariableValue::Usize(u) = &self.value {
             Some(*u)
         } else {
             None
+        }
+    }
+
+    pub fn to_usize(&self) -> Result<usize> {
+        if let VariableValue::Usize(u) = &self.value {
+            Ok(*u)
+        } else {
+            Err(ConfigError::InvalidVariableType(self.code.to_string()))
         }
     }
 

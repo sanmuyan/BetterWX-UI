@@ -2,7 +2,6 @@ use crate::ConfigVecWrapperTrait;
 use crate::errors::ConfigError;
 use crate::errors::Result;
 use crate::patches::Patches;
-use crate::serders::default::default_tdelay;
 use crate::serders::default::default_true;
 use crate::serders::skippers::skip_if_empty;
 use crate::serders::skippers::skip_if_tdelay;
@@ -199,7 +198,7 @@ pub struct Feature {
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub status: bool, // 当前功能状态
-    #[serde(default = "default_tdelay")]
+    #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_tdelay")]
     pub tdelay: usize, // 文本显示延迟
     #[serde(default)]

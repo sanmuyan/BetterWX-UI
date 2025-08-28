@@ -1,8 +1,6 @@
 use crate::addresses::Addresses;
 use crate::errors::ConfigError;
 use crate::errors::Result;
-use crate::serders::default::default_1;
-use crate::serders::skippers::skip_if_1;
 use crate::serders::skippers::skip_if_empty;
 use crate::variables::Variables;
 use log::debug;
@@ -43,8 +41,8 @@ pub struct Group {
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub disabled: bool,
-    #[serde(default = "default_1")]
-    #[serde(skip_serializing_if = "skip_if_1")]
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
     pub count: usize,
 }
 
@@ -90,7 +88,7 @@ impl Group {
                 let len = poses.len();
 
                 // 基址数量限制
-                if len > 5 || (self.count > 0 && self.count != len) {
+                if (self.count > 0 && self.count != len) || len > 5 {
                     return Err(ConfigError::AddressesTooMuchError(
                         name.to_owned(),
                         len,

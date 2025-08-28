@@ -97,6 +97,9 @@ pub struct Pattern {
     #[serde(default)]
     #[serde(skip_serializing_if = "skip_if_empty")]
     pub searched: bool,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "skip_if_empty")]
+    pub count: usize,
 }
 
 impl Pattern {
@@ -141,13 +144,25 @@ impl Pattern {
         // gropu 存在数据 处理需要搜索的数据，然后搜索
         if let Some(group) = &mut self.group {
             group.init(variables)?;
+            // set conut
+            if group.count == 0 && self.count > 0 {
+                group.count = self.count;
+            }
         }
 
         // addresses 构建补丁数据
         if !self.addresses.is_empty() {
             //初始化 patched
             self.patched = false;
-            self.addresses.init(variables, &self.code)?;
+            match self.addresses.init(variables, &self.code) {
+                Ok(_) => {
+                    self.supported = true;
+                }
+                Err(e) => {
+                    error!("初始化补丁数据：{}，失败。{}", self.get_name(), e);
+                    self.supported = false;
+                }
+            }
         }
 
         Ok(())
@@ -189,7 +204,7 @@ impl Pattern {
                         }
                         _ => {}
                     }
-                },
+                }
             }
 
             if group.replace2.is_empty() || group.replace2.as_str() == "..." {

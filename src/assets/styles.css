@@ -5,6 +5,7 @@
 html{
   font-size: 14px;
   user-select: none;
+  overflow: hidden;
 }
 
 .my-border-color{
