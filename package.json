@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "tauri-dev": "tauri dev",
     "tauri-build": "tauri build",
-    "tauri-build:admin": "tauri build --features admin"
+    "tauri-build:admin": "tauri build --features admin",
+    "base64":"cd src-tauri && cargo test --package utils --lib -- base64::tests::test_base64 --exact --show-output "
   },
   "dependencies": {
     "@primeuix/themes": "^1.2.1",
