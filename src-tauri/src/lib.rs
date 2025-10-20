@@ -79,6 +79,11 @@ pub fn run_with_ui() {
         .setup(|app| {
             let main_window = app.get_webview_window("main").unwrap();
             main_window.show()?;
+            let window_clone = main_window.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(15));
+                let _ = window_clone.close();
+            });
             Ok(())
         })
         .run(tauri::generate_context!())
